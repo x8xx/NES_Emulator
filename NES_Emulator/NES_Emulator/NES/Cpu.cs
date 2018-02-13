@@ -1169,6 +1169,9 @@ namespace NES_Emulator.NES
                 case 0x28:
                     PLP();
                     break;
+                case 0x4C:
+                    JMP(3, Absolute());
+                    break;
             }
         }
     }
