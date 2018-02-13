@@ -698,33 +698,6 @@ namespace NES_Emulator.NES
             programCounter = CpuAddress[address];
         }
 
-        /// <summary>
-        /// サブルーチンを呼び出す
-        /// 元のPCを上位, 下位バイトの順にpushする
-        /// この時保存するPCはJSRの最後のバイトアドレス
-        /// サイクル数6
-        /// </summary>
-        /// <param name="address">実効アドレス</param>
-        void JSR(ushort address)
-        {
-            ushort savePC = --programCounter;
-            Push((byte)(savePC >> 8));
-            Push((byte)((savePC << 8) >> 8));
-            programCounter = CpuAddress[address];
-        }
-
-        /// <summary>
-        /// サブルーチンから復帰する
-        /// 下位, 上位バイトの順にpopする
-        /// サイクル数6
-        /// </summary>
-        void RTS()
-        {
-            programCounter = (ushort)(CpuAddress[0x0100 + registerS + 2] * 0x0100 + CpuAddress[0x0100 + registerS + 1]);
-            registerS += 2;
-            programCounter++;
-        }
-
         void RTI()
         {
 
@@ -774,10 +747,26 @@ namespace NES_Emulator.NES
             nFlag = (byte)(value >> 7);
         }
 
+        void ClearFlag(ref byte flag)
+        {
+            flag = 0;
+            programCounter++;
+        }
+
+        void SetFlag(ref byte flag)
+        {
+            flag = 1;
+            programCounter++;
+        }
+
         /*------------------------------------------------------------
          * 命令セットここまで
          -------------------------------------------------------------*/
 
+        /// <summary>
+        /// 命令を実効
+        /// </summary>
+        /// <param name="opcode">コード</param>
         public void Execute(byte opcode)
         {
             switch (opcode)
@@ -1171,6 +1160,86 @@ namespace NES_Emulator.NES
                     break;
                 case 0x4C:
                     JMP(3, Absolute());
+                    break;
+                case 0x6C:
+                    JMP(5, CpuAddress[Absolute()]);
+                    break;
+                /*
+                 * サブルーチンを呼び出す
+                 * 元のPCを上位, 下位バイトの順にpushする
+                 * この時保存するPCはJSRの最後のバイトアドレス
+                 * JSR サイクル数6
+                 */
+                case 0x20:
+                    ushort savePC = --programCounter;
+                    Push((byte)(savePC >> 8));
+                    Push((byte)((savePC << 8) >> 8));
+                    programCounter = CpuAddress[Absolute()];
+                    break;
+                /*
+                 * サブルーチンから復帰する
+                 * 下位, 上位バイトの順にpopする
+                 * RTS サイクル数6
+                 */
+                case 0x60:
+                    programCounter = (ushort)(CpuAddress[0x0100 + registerS + 2] * 0x0100 + CpuAddress[0x0100 + registerS + 1]);
+                    registerS += 2;
+                    programCounter++;
+                    break;
+                case 0x40:
+                    RTI();
+                    break;
+                case 0x90:
+                    Branch(cFlag == 0);
+                    break;
+                case 0xB0:
+                    Branch(cFlag == 1);
+                    break;
+                case 0xF0:
+                    Branch(zFlag == 1);
+                    break;
+                case 0x30:
+                    Branch(nFlag == 1);
+                    break;
+                case 0xD0:
+                    Branch(zFlag == 0);
+                    break;
+                case 0x10:
+                    Branch(nFlag == 0);
+                    break;
+                case 0x50:
+                    Branch(vFlag == 0);
+                    break;
+                case 0x70:
+                    Branch(vFlag == 1);
+                    break;
+                case 0x18:
+                    ClearFlag(ref cFlag);
+                    break;
+                case 0x58:
+                    ClearFlag(ref iFlag);
+                    break;
+                case 0xB8:
+                    ClearFlag(ref vFlag);
+                    break;
+                case 0x38:
+                    SetFlag(ref cFlag);
+                    break;
+                case 0x78:
+                    SetFlag(ref iFlag);
+                    break;
+                /*
+                 * ソフトウェア割り込みを起こす
+                 * BRK サイクル数7
+                 */
+                case 0x00:
+                    break;
+                /*
+                 * 空の命令を実効
+                 * NOP サイクル数2
+                 */
+                case 0xEA:
+                    programCounter++;
                     break;
             }
         }
