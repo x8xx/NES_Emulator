@@ -171,147 +171,56 @@ namespace NES_Emulator.NES
          * 命令セットここから
          -------------------------------------------------------------*/
         /// <summary>
-        /// メモリからAにロード
+        /// メモリからレジスタにロード
         /// N: ロードした値の最上位ビット
         /// Z: ロードコピーした値が0であるか
+        /// LDA, LDX, LDY
         /// </summary>
         /// <param name="cycle">サイクル数</param>
-        /// <param name="value">実効アドレス</param>
-        void LDA(int cycle, ushort address)
-        {
-            registerA = CpuAddress[address];
-            FlagNandZ(registerA);
-        }
-
-        /// <summary>
-        /// メモリからXにロード
-        /// N: ロードした値の最上位ビット
-        /// Z: ロードコピーした値が0であるか
-        /// </summary>
-        /// <param name="cycle">サイクル数</param>
-        /// <param name="value">実効アドレス</param>
-        void LDX(int cycle, ushort address)
-        {
-            registerX = CpuAddress[address];
-            FlagNandZ(registerX);
-        }
-
-        /// <summary>
-        /// メモリからYにロード
-        /// N: ロードした値の最上位ビット
-        /// Z: ロードコピーした値が0であるか
-        /// </summary>
-        /// <param name="cycle">サイクル数</param>
-        /// <param name="value">実効アドレス</param>
-        void LDY(int cycle, ushort address)
-        {
-            registerY = CpuAddress[address];
-            FlagNandZ(registerY);
-        }
-
-        /// <summary>
-        /// Aからメモリにストア
-        /// </summary>
-        /// <param name="cycle">サイクル数.</param>
         /// <param name="address">実効アドレス</param>
-        void STA(int cycle, ushort address)
+        /// <param name="register">レジスタ</param>
+        void LoadToRegister(int cycle, ushort address, ref byte register)
         {
-            CpuAddress[address] = registerA;
+            register = CpuAddress[address];
+            FlagNandZ(register);
         }
 
+
         /// <summary>
-        /// Xからメモリにストア
+        /// レジスタからメモリにストア
+        /// STA, STX, STY
         /// </summary>
-        /// <param name="cycle">サイクル数.</param>
+        /// <param name="cycle">サイクル数</param>
         /// <param name="address">実効アドレス</param>
-        void STX(int cycle, ushort address)
+        /// <param name="register">レジスタ</param>
+        void StoreToMemory(int cycle, ushort address, ref byte register)
         {
-            CpuAddress[address] = registerX;
-        }
-
-        /// <summary>
-        /// Yからメモリにストア
-        /// </summary>
-        /// <param name="cycle">サイクル数.</param>
-        /// <param name="address">実効アドレス</param>
-        void STY(int cycle, ushort address)
-        {
-            CpuAddress[address] = registerY;
-        }
-
-        /// <summary>
-        /// AをXへコピー
-        /// N: コピーした値の最上位ビット
-        /// Z: コピーした値が0であるか
-        /// </summary>
-        /// <param name="cycle">サイクル数</param>
-        void TAX(int cycle)
-        {
-            programCounter++;
-            registerX = registerA;
-            FlagNandZ(registerX);
-        }
-
-        /// <summary>
-        /// AをYへコピー
-        /// N: コピーした値の最上位ビット
-        /// Z: コピーした値が0であるか
-        /// </summary>
-        /// <param name="cycle">サイクル数</param>
-        void TAY(int cycle)
-        {
-            programCounter++;
-            registerY = registerA;
-            FlagNandZ(registerY);
-        }
-
-        /// <summary>
-        /// SをXへコピー
-        /// N: コピーした値の最上位ビット
-        /// Z: コピーした値が0であるか
-        /// </summary>
-        /// <param name="cycle">サイクル数</param>
-        void TSX(int cycle)
-        {
-            programCounter++;
-            registerX = registerS;
-            FlagNandZ(registerX);
-        }
-
-        /// <summary>
-        /// XをAへコピー
-        /// N: コピーした値の最上位ビット
-        /// Z: コピーした値が0であるか
-        /// </summary>
-        /// <param name="cycle">サイクル数</param>
-        void TXA(int cycle)
-        {
-            programCounter++;
-            registerA = registerX;
-            FlagNandZ(registerA);
+            CpuAddress[address] = register;
         }
 
         /// <summary>
         /// XをSへコピー
+        /// サイクル数2
         /// </summary>
-        /// <param name="cycle">サイクル数</param>
-        void TXS(int cycle)
+        void TXS()
         {
             programCounter++;
             registerS = registerX;
         }
 
         /// <summary>
-        /// YをAへコピー
+        /// レジスタをコピー
         /// N: コピーした値の最上位ビット
         /// Z: コピーした値が0であるか
+        /// TAX, TAY, TSX, TXA, TYA サイクル数2
         /// </summary>
-        /// <param name="cycle">サイクル数</param>
-        void TYA(int cycle)
+        /// <param name="copySource">コピー元</param>
+        /// <param name="copyTarget">コピー先</param>
+        void CopyRegister(ref byte copySource, ref byte copyTarget)
         {
             programCounter++;
-            registerA = registerY;
-            FlagNandZ(registerA);
+            copyTarget = copySource;
+            FlagNandZ(copyTarget);
         }
 
 
@@ -747,12 +656,20 @@ namespace NES_Emulator.NES
             nFlag = (byte)(value >> 7);
         }
 
+        /// <summary>
+        /// フラグクリア
+        /// </summary>
+        /// <param name="flag">Flag.</param>
         void ClearFlag(ref byte flag)
         {
             flag = 0;
             programCounter++;
         }
 
+        /// <summary>
+        /// フラグセット
+        /// </summary>
+        /// <param name="flag">Flag.</param>
         void SetFlag(ref byte flag)
         {
             flag = 1;
@@ -772,115 +689,115 @@ namespace NES_Emulator.NES
             switch (opcode)
             {
                 case 0xA9:
-                    LDA(2, Immediate());
+                    LoadToRegister(2, Immediate(), ref registerA);
                     break;
                 case 0xA5:
-                    LDA(3, Zeropage());
+                    LoadToRegister(3, Zeropage(), ref registerA);
                     break;
                 case 0xB5:
-                    LDA(4, ZeropageX());
+                    LoadToRegister(4, ZeropageX(), ref registerA);
                     break;
                 case 0xAD:
-                    LDA(4, Absolute());
+                    LoadToRegister(4, Absolute(), ref registerA);
                     break;
                 case 0xBD:
-                    LDA(4, AbsoluteX());
+                    LoadToRegister(4, AbsoluteX(), ref registerA);
                     break;
                 case 0xB9:
-                    LDA(4, AbsoluteY());
+                    LoadToRegister(4, AbsoluteY(), ref registerA);
                     break;
                 case 0xA1:
-                    LDA(6, IndirectX());
+                    LoadToRegister(6, IndirectX(), ref registerA);
                     break;
                 case 0xB1:
-                    LDA(5, IndirectY());
+                    LoadToRegister(5, IndirectY(), ref registerA);
                     break;
                 case 0xA2:
-                    LDX(2, Immediate());
+                    LoadToRegister(2, Immediate(), ref registerX);
                     break;
                 case 0xA6:
-                    LDX(3, Zeropage());
+                    LoadToRegister(3, Zeropage(), ref registerX);
                     break;
                 case 0xB6:
-                    LDX(4, ZeropageY());
+                    LoadToRegister(4, ZeropageY(), ref registerX);
                     break;
                 case 0xAE:
-                    LDX(4, Absolute());
+                    LoadToRegister(4, Absolute(), ref registerX);
                     break;
                 case 0xBE:
-                    LDX(4, AbsoluteY());
+                    LoadToRegister(4, AbsoluteY(), ref registerX);
                     break;
                 case 0xA0:
-                    LDY(2, Immediate());
+                    LoadToRegister(2, Immediate(), ref registerY);
                     break;
                 case 0xA4:
-                    LDY(3, Zeropage());
+                    LoadToRegister(3, Zeropage(), ref registerY);
                     break;
                 case 0xB4:
-                    LDY(4, ZeropageX());
+                    LoadToRegister(4, ZeropageX(), ref registerY);
                     break;
                 case 0xAC:
-                    LDY(4, Absolute());
+                    LoadToRegister(4, Absolute(), ref registerY);
                     break;
                 case 0xBC:
-                    LDY(4, AbsoluteX());
+                    LoadToRegister(4, AbsoluteX(), ref registerY);
                     break;
                 case 0x85:
-                    STA(3, Zeropage());
+                    StoreToMemory(3, Zeropage(), ref registerA);
                     break;
                 case 0x95:
-                    STA(4, ZeropageX());
+                    StoreToMemory(4, ZeropageX(), ref registerA);
                     break;
                 case 0x8D:
-                    STA(4, Absolute());
+                    StoreToMemory(4, Absolute(), ref registerA);
                     break;
                 case 0x9D:
-                    STA(5, AbsoluteX());
+                    StoreToMemory(5, AbsoluteX(), ref registerA);
                     break;
                 case 0x99:
-                    STA(5, AbsoluteY());
+                    StoreToMemory(5, AbsoluteY(), ref registerA);
                     break;
                 case 0x81:
-                    STA(6, IndirectX());
+                    StoreToMemory(6, IndirectX(), ref registerA);
                     break;
                 case 0x91:
-                    STA(6, IndirectY());
+                    StoreToMemory(6, IndirectY(), ref registerA);
                     break;
                 case 0x86:
-                    STX(3, Zeropage());
+                    StoreToMemory(3, Zeropage(), ref registerX);
                     break;
                 case 0x96:
-                    STX(4, ZeropageY());
+                    StoreToMemory(4, ZeropageY(), ref registerX);
                     break;
                 case 0x8E:
-                    STX(4, Absolute());
+                    StoreToMemory(4, Absolute(), ref registerX);
                     break;
                 case 0x84:
-                    STY(3, Zeropage());
+                    StoreToMemory(3, Zeropage(), ref registerY);
                     break;
                 case 0x94:
-                    STY(4, ZeropageX());
+                    StoreToMemory(4, ZeropageX(), ref registerY);
                     break;
                 case 0x8C:
-                    STY(4, Absolute());
+                    StoreToMemory(4, Absolute(), ref registerY);
                     break;
                 case 0xAA:
-                    TAX(2);
+                    CopyRegister(ref registerA, ref registerX);
                     break;
                 case 0xA8:
-                    TAY(2);
+                    CopyRegister(ref registerA, ref registerY);
                     break;
                 case 0xBA:
-                    TSX(2);
+                    CopyRegister(ref registerS, ref registerX);
                     break;
                 case 0x8A:
-                    TXA(2);
+                    CopyRegister(ref registerX, ref registerA);
                     break;
                 case 0x9A:
-                    TXS(2);
+                    TXS();
                     break;
                 case 0x98:
-                    TYA(2);
+                    CopyRegister(ref registerY, ref registerA);
                     break;
                 case 0x69:
                     ADC(2, Immediate());
