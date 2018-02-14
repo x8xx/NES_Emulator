@@ -4,16 +4,35 @@ namespace NES_Emulator.NES
     public class Rom
     {
         byte[] rom;
-        byte[] header;
-        byte[] programRom;
-        byte[] characterRom;
+        byte[] _header;
+        byte[] _programRom;
+        byte[] _characterRom;
+
+        public byte[] Header
+        {
+            get { return _header; }
+            private set { _header = value; }
+        }
+
+        public byte[] ProgramRom
+        {
+            get { return _programRom; }
+            private set { _programRom = value; }
+        }
+
+        public byte[] CharacterRom
+        {
+            get { return _characterRom; }
+            private set { _characterRom = value; }
+        }
+
 
         public Rom(byte[] rom)
         {
             this.rom = rom;
-            header = new byte[0x10];
-            programRom = new byte[rom[4] * 0x4000];
-            characterRom = new byte[rom[5] * 0x2000];
+            Header = new byte[0x10];
+            ProgramRom = new byte[rom[4] * 0x4000];
+            CharacterRom = new byte[rom[5] * 0x2000];
         }
 
         public void RomLoad()
@@ -28,17 +47,17 @@ namespace NES_Emulator.NES
             {
                 if (i < 0x10)
                 {
-                    header[hCount] = rom[i];
+                    Header[hCount] = rom[i];
                     hCount++;
                 }
-                else if (i < programRom.Length)
+                else if (i < ProgramRom.Length)
                 {
-                    programRom[pCount] = rom[i];
+                    ProgramRom[pCount] = rom[i];
                     pCount++;
                 }
                 else
                 {
-                    characterRom[cCount] = rom[i];
+                    CharacterRom[cCount] = rom[i];
                     cCount++;
                 }
             }
@@ -50,7 +69,7 @@ namespace NES_Emulator.NES
         /// <returns><c>true</c>, if judgment NESR om was ised, <c>false</c> otherwise.</returns>
         public bool IsJudgmentNESRom()
         {
-            if (header[0] == 0x4E && header[1] == 0x45 && header[2] == 0x53 && header[3] == 0x1A)
+            if (Header[0] == 0x4E && Header[1] == 0x45 && Header[2] == 0x53 && Header[3] == 0x1A)
             {
                 return true;
             }
