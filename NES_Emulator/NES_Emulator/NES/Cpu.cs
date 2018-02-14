@@ -245,21 +245,6 @@ namespace NES_Emulator.NES
         }
 
         /// <summary>
-        /// Aを1回左シフト
-        /// N: 結果の最上位ビット
-        /// Z: 結果が0であるか
-        /// C: はみ出たビット
-        /// </summary>
-        /// <param name="cycle">サイクル数.</param>
-        void ASL(int cycle)
-        {
-            programCounter++;
-            cFlag = (byte)(registerA >> 7);
-            registerA <<= 1;
-            FlagNandZ(registerA);
-        }
-
-        /// <summary>
         /// メモリを1回左シフト
         /// N: 結果の最上位ビット
         /// Z: 結果が0であるか
@@ -267,11 +252,11 @@ namespace NES_Emulator.NES
         /// </summary>
         /// <param name="cycle">サイクル数.</param>
         /// <param name="address">実効アドレス</param>
-        void ASL(int cycle, ushort address)
+        void ASL(int cycle, ref byte value)
         {
-            cFlag = (byte)(CpuAddress[address] >> 7);
-            CpuAddress[address] <<= 1;
-            FlagNandZ(CpuAddress[address]);
+            cFlag = (byte)(value >> 7);
+            value <<= 1;
+            FlagNandZ(value);
         }
 
         /// <summary>
@@ -290,58 +275,19 @@ namespace NES_Emulator.NES
         }
 
         /// <summary>
-        /// 演算の結果によって, フラグをセット(A - メモリ)
+        /// 演算の結果によって, フラグをセット(レジスタ - メモリ)
         /// N: 減算結果の最上位ビット
         /// Z: 減算結果が0であるか
         /// C: 減算結果が正かゼロのときセット, 負のときクリア
+        /// CMP, CPX, CPY
         /// </summary>
         /// <param name="cycle">サイクル数.</param>
         /// <param name="address">実効アドレス</param>
-        void CMP(int cycle, ushort address)
+        void Comparison(int cycle, ushort address, ref byte register)
         {
-            byte tmp = (byte)(registerA - CpuAddress[address]);
-            ComparisonFlag(tmp);
-        }
-
-        /// <summary>
-        /// 演算の結果によって, フラグをセット(X - メモリ)
-        /// N: 減算結果の最上位ビット
-        /// Z: 減算結果が0であるか
-        /// C: 減算結果が正かゼロのときセット, 負のときクリア
-        /// </summary>
-        /// <param name="cycle">サイクル数.</param>
-        /// <param name="address">実効アドレス</param>
-        void CPX(int cycle, ushort address)
-        {
-            byte tmp = (byte)(registerX - CpuAddress[address]);
-            ComparisonFlag(tmp);
-        }
-
-        /// <summary>
-        /// 演算の結果によって, フラグをセット(Y - メモリ)
-        /// N: 減算結果の最上位ビット
-        /// Z: 減算結果が0であるか
-        /// C: 減算結果が正かゼロのときセット, 負のときクリア
-        /// </summary>
-        /// <param name="cycle">サイクル数.</param>
-        /// <param name="address">実効アドレス</param>
-        void CPY(int cycle, ushort address)
-        {
-            byte tmp = (byte)(registerY - CpuAddress[address]);
-            ComparisonFlag(tmp);
-        }
-
-        /// <summary>
-        /// CMP CPX CPYのフラグ処理
-        /// N: 減算結果の最上位ビット
-        /// Z: 減算結果が0であるか
-        /// C: 減算結果が正かゼロのときセット, 負のときクリア
-        /// </summary>
-        /// <param name="value">減算結果</param>
-        void ComparisonFlag(byte value)
-        {
-            FlagNandZ(value);
-            if (value >= 0)
+            byte tmp = (byte)(register - CpuAddress[address]);
+            FlagNandZ(tmp);
+            if (tmp >= 0)
             {
                 cFlag = 1;
             }
@@ -362,34 +308,6 @@ namespace NES_Emulator.NES
         {
             CpuAddress[address]--;
             FlagNandZ(CpuAddress[address]);
-        }
-
-        /// <summary>
-        /// Xをデクリメント
-        /// N: 演算結果の最上位ビット
-        /// Z: 演算結果が0であるか
-        /// </summary>
-        /// <param name="cycle">サイクル数</param>
-        /// <param name="address">実効アドレス</param>
-        void DEX(int cycle)
-        {
-            programCounter++;
-            registerX--;
-            FlagNandZ(registerX);
-        }
-
-        /// <summary>
-        /// Yをデクリメント
-        /// N: 演算結果の最上位ビット
-        /// Z: 演算結果が0であるか
-        /// </summary>
-        /// <param name="cycle">サイクル数</param>
-        /// <param name="address">実効アドレス</param>
-        void DEY(int cycle)
-        {
-            programCounter++;
-            registerY--;
-            FlagNandZ(registerY);
         }
 
         /// <summary>
@@ -419,50 +337,6 @@ namespace NES_Emulator.NES
         }
 
         /// <summary>
-        /// Xをインクリメント
-        /// N: 演算結果の最上位ビット
-        /// Z: 演算結果が0であるか
-        /// </summary>
-        /// <param name="cycle">サイクル数</param>
-        /// <param name="address">実効アドレス</param>
-        void INX(int cycle)
-        {
-            programCounter++;
-            registerX++;
-            FlagNandZ(registerX);
-        }
-
-        /// <summary>
-        /// Yをインクリメント
-        /// N: 演算結果の最上位ビット
-        /// Z: 演算結果が0であるか
-        /// </summary>
-        /// <param name="cycle">サイクル数</param>
-        /// <param name="address">実効アドレス</param>
-        void INY(int cycle)
-        {
-            programCounter++;
-            registerX++;
-            FlagNandZ(registerX);
-        }
-
-        /// <summary>
-        /// Aを1回右シフト
-        /// N: 結果の最上位ビット
-        /// Z: 結果が0であるか
-        /// C: はみ出たビット
-        /// </summary>
-        /// <param name="cycle">サイクル数.</param>
-        /// <param name="address">実効アドレス</param>
-        void LSR(int cycle)
-        {
-            programCounter++;
-            cFlag = (byte)((registerA << 7) >> 7);
-            registerA >>= 1;
-            FlagNandZ(registerA);
-        }
-
-        /// <summary>
         /// メモリを1回右シフト
         /// N: 結果の最上位ビット
         /// Z: 結果が0であるか
@@ -470,11 +344,11 @@ namespace NES_Emulator.NES
         /// </summary>
         /// <param name="cycle">サイクル数.</param>
         /// <param name="address">実効アドレス</param>
-        void LSR(int cycle, ushort address)
+        void LSR(int cycle, ref byte value)
         {
-            cFlag = (byte)((CpuAddress[address] << 7) >> 7);
-            CpuAddress[address] >>= 1;
-            FlagNandZ(CpuAddress[address]);
+            cFlag = (byte)((value << 7) >> 7);
+            value >>= 1;
+            FlagNandZ(value);
         }
 
         /// <summary>
@@ -491,51 +365,19 @@ namespace NES_Emulator.NES
         }
 
         /// <summary>
-        /// Aを1回左ローテート
-        /// N: 結果の最上位ビット
-        /// Z: 結果が0であるか
-        /// C: はみ出たビット
-        /// </summary>
-        /// <param name="cycle">サイクル数.</param>
-        void ROL(int cycle)
-        {
-            programCounter++;
-            byte tmp = (byte)(registerA >> 7);
-            registerA = (byte)((registerA << 1) + cFlag);
-            cFlag = tmp;
-            FlagNandZ(registerA);
-        }
-
-        /// <summary>
         /// メモリを1回左ローテート
         /// N: 結果の最上位ビット
         /// Z: 結果が0であるか
         /// C: はみ出たビット
         /// </summary>
         /// <param name="cycle">サイクル数.</param>
-        /// <param name="address">実効アドレス</param>
-        void ROL(int cycle, ushort address)
+        /// <param name="address">値</param>
+        void ROL(int cycle, ref byte value)
         {
-            byte tmp = (byte)(CpuAddress[address] >> 7);
-            CpuAddress[address] = (byte)((CpuAddress[address] << 1) + cFlag);
+            byte tmp = (byte)(value >> 7);
+            value = (byte)((value << 1) + cFlag);
             cFlag = tmp;
-            FlagNandZ(CpuAddress[address]);
-        }
-
-        /// <summary>
-        /// Aを1回右ローテート
-        /// N: 結果の最上位ビット
-        /// Z: 結果が0であるか
-        /// C: はみ出たビット
-        /// </summary>
-        /// <param name="cycle">サイクル数.</param>
-        void ROR(int cycle)
-        {
-            programCounter++;
-            byte tmp = (byte)((registerA << 7) >> 7);
-            registerA = (byte)((registerA >> 1) + nFlag * 0x80);
-            cFlag = tmp;
-            FlagNandZ(registerA);
+            FlagNandZ(value);
         }
 
         /// <summary>
@@ -545,13 +387,13 @@ namespace NES_Emulator.NES
         /// C: はみ出たビット
         /// </summary>
         /// <param name="cycle">サイクル数.</param>
-        /// <param name="address">実効アドレス</param>
-        void ROR(int cycle, ushort address)
+        /// <param name="address">値</param>
+        void ROR(int cycle, ref byte value)
         {
-            byte tmp = (byte)((CpuAddress[address] << 7) >> 7);
-            CpuAddress[address] = (byte)((CpuAddress[address] >> 1) + nFlag * 0x80);
+            byte tmp = (byte)((value << 7) >> 7);
+            value = (byte)((value >> 1) + nFlag * 0x80);
             cFlag = tmp;
-            FlagNandZ(CpuAddress[address]);
+            FlagNandZ(value);
         }
 
         void SBC(int cycle, ushort address)
@@ -848,19 +690,20 @@ namespace NES_Emulator.NES
                     AND(5, IndirectY());
                     break;
                 case 0x0A:
-                    ASL(2);
+                    ASL(2, ref registerA);
+                    programCounter++;
                     break;
                 case 0x06:
-                    ASL(5, Zeropage());
+                    ASL(5, ref CpuAddress[Zeropage()]);
                     break;
                 case 0x16:
-                    ASL(6, ZeropageX());
+                    ASL(6, ref CpuAddress[ZeropageX()]);
                     break;
                 case 0x0E:
-                    ASL(6, Absolute());
+                    ASL(6, ref CpuAddress[Absolute()]);
                     break;
                 case 0x1E:
-                    ASL(7, AbsoluteX());
+                    ASL(7, ref CpuAddress[AbsoluteX()]);
                     break;
                 case 0x24:
                     BIT(3, Zeropage());
@@ -869,46 +712,46 @@ namespace NES_Emulator.NES
                     BIT(4, Absolute());
                     break;
                 case 0xC9:
-                    CMP(2, Immediate());
+                    Comparison(2, Immediate(), ref registerA);
                     break;
                 case 0xC5:
-                    CMP(3, Zeropage());
+                    Comparison(3, Zeropage(), ref registerA);
                     break;
                 case 0xD5:
-                    CMP(4, ZeropageX());
+                    Comparison(4, ZeropageX(), ref registerA);
                     break;
                 case 0xCD:
-                    CMP(4, Absolute());
+                    Comparison(4, Absolute(), ref registerA);
                     break;
                 case 0xDD:
-                    CMP(4, AbsoluteX());
+                    Comparison(4, AbsoluteX(), ref registerA);
                     break;
                 case 0xD9:
-                    CMP(4, AbsoluteY());
+                    Comparison(4, AbsoluteY(), ref registerA);
                     break;
                 case 0xC1:
-                    CMP(6, IndirectX());
+                    Comparison(6, IndirectX(), ref registerA);
                     break;
                 case 0xD1:
-                    CMP(5, IndirectY());
+                    Comparison(5, IndirectY(), ref registerA);
                     break;
                 case 0xE0:
-                    CPX(2, Immediate());
+                    Comparison(2, Immediate(), ref registerX);
                     break;
                 case 0xE4:
-                    CPX(3, Zeropage());
+                    Comparison(3, Zeropage(), ref registerX);
                     break;
                 case 0xEC:
-                    CPX(4, Absolute());
+                    Comparison(4, Absolute(), ref registerX);
                     break;
                 case 0xC0:
-                    CPY(2, Immediate());
+                    Comparison(2, Immediate(), ref registerY);
                     break;
                 case 0xC4:
-                    CPY(3, Zeropage());
+                    Comparison(3, Zeropage(), ref registerY);
                     break;
                 case 0xCC:
-                    CPY(4, Absolute());
+                    Comparison(4, Absolute(), ref registerY);
                     break;
                 case 0xC6:
                     DEC(5, Zeropage());
@@ -922,11 +765,27 @@ namespace NES_Emulator.NES
                 case 0xDE:
                     DEC(7, AbsoluteX());
                     break;
+                /*
+                 * Xをデクリメント
+                 * N: 演算結果の最上位ビット
+                 * Z: 演算結果が0であるか
+                 * サイクル数2
+                 */
                 case 0xCA:
-                    DEX(2);
+                    programCounter++;
+                    registerX--;
+                    FlagNandZ(registerX);
                     break;
+                /*
+                 * Yをデクリメント
+                 * N: 演算結果の最上位ビット
+                 * Z: 演算結果が0であるか
+                 * サイクル数2
+                 */
                 case 0x88:
-                    DEY(2);
+                    programCounter++;
+                    registerY--;
+                    FlagNandZ(registerX);
                     break;
                 case 0x49:
                     EOR(2, Immediate());
@@ -964,26 +823,43 @@ namespace NES_Emulator.NES
                 case 0xFE:
                     INC(7, AbsoluteX());
                     break;
+                /*
+                 * Xをインクリメント
+                 * N: 演算結果の最上位ビット
+                 * Z: 演算結果が0であるか
+                 * サイクル数2
+                 */
                 case 0xE8:
-                    INX(2);
+                    programCounter++;
+                    registerX++;
+                    FlagNandZ(registerX);
                     break;
+                /*
+                 * Yをインクリメント
+                 * N: 演算結果の最上位ビット
+                 * Z: 演算結果が0であるか
+                 * サイクル数2
+                 */
                 case 0xC8:
-                    INY(2);
+                    programCounter++;
+                    registerY++;
+                    FlagNandZ(registerY);
                     break;
                 case 0x4A:
-                    LSR(2);
+                    LSR(2, ref registerA);
+                    programCounter++;
                     break;
                 case 0x46:
-                    LSR(5, Zeropage());
+                    LSR(5, ref CpuAddress[Zeropage()]);
                     break;
                 case 0x56:
-                    LSR(6, ZeropageX());
+                    LSR(6, ref CpuAddress[ZeropageX()]);
                     break;
                 case 0x4E:
-                    LSR(6, Absolute());
+                    LSR(6, ref CpuAddress[Absolute()]);
                     break;
                 case 0x5E:
-                    LSR(7, AbsoluteX());
+                    LSR(7, ref CpuAddress[AbsoluteX()]);
                     break;
                 case 0x09:
                     ORA(2, Immediate());
@@ -1010,34 +886,36 @@ namespace NES_Emulator.NES
                     ORA(5, IndirectY());
                     break;
                 case 0x2A:
-                    ROL(2);
+                    ROL(2, ref registerA);
+                    programCounter++;
                     break;
                 case 0x26:
-                    ROL(5, Zeropage());
+                    ROL(5, ref CpuAddress[Zeropage()]);
                     break;
                 case 0x36:
-                    ROL(6, ZeropageX());
+                    ROL(6, ref CpuAddress[ZeropageX()]);
                     break;
                 case 0x2E:
-                    ROL(6, Absolute());
+                    ROL(6, ref CpuAddress[Absolute()]);
                     break;
                 case 0x3E:
-                    ROL(7, AbsoluteX());
+                    ROL(7, ref CpuAddress[AbsoluteX()]);
                     break;
                 case 0x6A:
-                    ROR(2);
+                    ROR(2, ref registerA);
+                    programCounter++;
                     break;
                 case 0x66:
-                    ROR(5, Zeropage());
+                    ROR(5, ref CpuAddress[Zeropage()]);
                     break;
                 case 0x76:
-                    ROR(6, ZeropageX());
+                    ROR(6, ref CpuAddress[ZeropageX()]);
                     break;
                 case 0x6E:
-                    ROR(6, Absolute());
+                    ROR(6, ref CpuAddress[Absolute()]);
                     break;
                 case 0x7E:
-                    ROR(7, AbsoluteX());
+                    ROR(7, ref CpuAddress[AbsoluteX()]);
                     break;
                 case 0xE9:
                     SBC(2, Immediate());
