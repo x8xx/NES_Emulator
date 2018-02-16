@@ -3,6 +3,7 @@ using Android.Content.PM;
 using Android.OS;
 using Prism;
 using Prism.Ioc;
+using NES_Emulator.FileManage;
 
 namespace NES_Emulator.Droid
 {
@@ -26,6 +27,7 @@ namespace NES_Emulator.Droid
         public void RegisterTypes(IContainerRegistry container)
         {
             // Register any platform specific implementations
+            container.RegisterInstance<IFileSelect>(new FileManage.FileSelect());
         }
     }
 }

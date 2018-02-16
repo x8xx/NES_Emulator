@@ -2,6 +2,7 @@
 using Prism;
 using Prism.Ioc;
 using UIKit;
+using NES_Emulator.FileManage;
 
 
 namespace NES_Emulator.iOS
@@ -32,7 +33,7 @@ namespace NES_Emulator.iOS
     {
         public void RegisterTypes(IContainerRegistry container)
         {
-
+            container.RegisterInstance<IFileSelect>(new FileManage.FileSelect());
         }
     }
 }

@@ -3,5 +3,8 @@
 	<ContentPage.Padding>
         <OnPlatform x:TypeArguments="Thickness" iOS="0, 20, 0, 0"/>
     </ContentPage.Padding>
-    <ListView/>
+    <StackLayout>
+        <Button Text="Select Rom" Command="{Binding SelectRom}"/>
+        <Label Text="{Binding Test}"/>
+    </StackLayout>
 </ContentPage>
