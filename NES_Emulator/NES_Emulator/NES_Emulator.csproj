@@ -11,5 +11,6 @@
 
   <ItemGroup>
     <Folder Include="NES\" />
+    <Folder Include="FileManage\" />
   </ItemGroup>
 </Project>
