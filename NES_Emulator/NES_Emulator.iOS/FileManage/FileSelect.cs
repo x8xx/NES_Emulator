@@ -1,5 +1,8 @@
 ﻿using System;
 using NES_Emulator.FileManage;
+using UIKit;
+using CloudKit;
+using Foundation;
 
 namespace NES_Emulator.iOS.FileManage
 {
@@ -7,7 +10,24 @@ namespace NES_Emulator.iOS.FileManage
     {
         public string GetText()
         {
-            return "Hello iOS";
+            return "test";
         }
+
+        public void OpenDocumentBrowserView()
+        {
+            var nsmdq = new NSMetadataQuery();
+
+        }
+
+        void DidPickDocument(object sender, UIDocumentPickedEventArgs e)
+        {
+            
+        }
+
+        void WasCancelled(object sender, EventArgs e)
+        {
+            
+        }
+
     }
 }

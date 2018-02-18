@@ -10,5 +10,10 @@ namespace NES_Emulator.Droid.FileManage
             return "Hello Android";
         }
 
+        public void OpenDocumentBrowserView()
+        {
+            
+        }
+
     }
 }

@@ -24,7 +24,7 @@ namespace NES_Emulator.ViewModels
             SelectRom = new DelegateCommand(() =>
             {
                 Test = fileSelect.GetText();
-                //Test = "aiueoaiueo";
+                fileSelect.OpenDocumentBrowserView();
             });
         }
 
