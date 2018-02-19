@@ -1,4 +1,4 @@
-﻿using System;
+﻿using System.Diagnostics;
 namespace NES_Emulator.NES
 {
     public class Rom
@@ -33,6 +33,7 @@ namespace NES_Emulator.NES
             Header = new byte[0x10];
             ProgramRom = new byte[rom[4] * 0x4000];
             CharacterRom = new byte[rom[5] * 0x2000];
+            Debug.WriteLine(CharacterRom.Length);
         }
 
         public void RomLoad()
@@ -43,22 +44,23 @@ namespace NES_Emulator.NES
         public void SpliteRom()
         {
             int hCount = 0, pCount = 0, cCount = 0;
-            for (int i = 0; i < rom.Length; i++)
+            for (int i = 0; i < rom.GetLength(0); i++)
             {
                 if (i < 0x10)
                 {
                     Header[hCount] = rom[i];
                     hCount++;
                 }
-                else if (i < ProgramRom.Length)
+                else if (pCount < ProgramRom.Length)
                 {
                     ProgramRom[pCount] = rom[i];
                     pCount++;
                 }
-                else
+                else if (cCount < CharacterRom.Length)
                 {
                     CharacterRom[cCount] = rom[i];
                     cCount++;
+                    //Debug.WriteLine(cCount);
                 }
             }
         }

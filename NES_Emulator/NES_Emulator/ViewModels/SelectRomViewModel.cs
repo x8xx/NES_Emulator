@@ -3,6 +3,7 @@ using Prism.Mvvm;
 using Prism.Navigation;
 using Prism.Commands;
 using System.Windows.Input;
+using NES_Emulator.NES;
 
 namespace NES_Emulator.ViewModels
 {
@@ -24,7 +25,9 @@ namespace NES_Emulator.ViewModels
             SelectRom = new DelegateCommand(() =>
             {
                 Test = fileSelect.GetText();
-                fileSelect.OpenDocumentBrowserView();
+                TestGenerateSprite sprite = new TestGenerateSprite(TestRomBinary.helloWorld);
+                sprite.GetSprite();
+                sprite.PrintSprit();
             });
         }
 
