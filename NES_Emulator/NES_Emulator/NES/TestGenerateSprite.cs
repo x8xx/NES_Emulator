@@ -7,14 +7,12 @@ namespace NES_Emulator.NES
     {
         byte[] characterRom;
         byte[,,] sprite;
-        int pointer;
 
         public TestGenerateSprite(byte[] romData)
         {
             Rom rom = new Rom(romData);
             rom.SpliteRom();
             characterRom = rom.CharacterRom;
-            pointer = 0;
             sprite = new byte[characterRom.Length / 16, 8, 8];
         }
 
@@ -66,6 +64,7 @@ namespace NES_Emulator.NES
             int count = 0;
             for (int k = 0; k < sprite.GetLength(0); k++)
             {
+                Debug.WriteLine(k);
                 for (int i = k * 16; i < k * 16 + 8; i++)
                 {
                     for (int j = 0; j < 8; j++)
@@ -86,6 +85,10 @@ namespace NES_Emulator.NES
                 count = 0;
                 Debug.WriteLine("\r\n");
             }
+        }
+        public void GenerateImage()
+        {
+            
         }
     }
 }

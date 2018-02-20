@@ -6,5 +6,6 @@
     <StackLayout>
         <Button Text="Select Rom" Command="{Binding SelectRom}"/>
         <Label Text="{Binding Test}"/>
+        <Image Source="{Binding Sprite}"/>
     </StackLayout>
 </ContentPage>
