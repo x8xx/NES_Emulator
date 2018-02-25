@@ -36,7 +36,9 @@ namespace NES_Emulator.NES
          *    0x3F1D〜0x3F1F スプライトパレット3
          * 0x3F20～0x3FFF        0x3F00-0x3F1Fのミラー
          */
-        byte[] PpuAddress;
+        byte[] ppuAddress;
+        byte[,,] sprite; //Sprite保存用
+        Rom rom;
 
         //パレットカラー
         byte[,] COLORS = new byte[,]{ { 0x75, 0x75, 0x75 },
@@ -77,9 +79,51 @@ namespace NES_Emulator.NES
                 { 0x11, 0x11, 0x11 }, { 0x11, 0x11, 0x11 } };
 
 
-        public Ppu()
+        public Ppu(Rom rom)
         {
-            PpuAddress = new byte[0x4000];
+            ppuAddress = new byte[0x4000];
+            this.rom = rom;
+            sprite = new byte[rom.CharacterRom.Length / 16, 8, 8];
+        }
+
+        /// <summary>
+        /// スプライトを読み込み保存
+        /// </summary>
+        public void LoadSprite()
+        {
+            int count = 0;
+            for (int i = 0;i < sprite.GetLength(0);i++)
+            {
+                for (int j = i * 16; j < i * 16 + 8; j++)
+                {
+                    string highOrder = BinaryNumberConversion(rom.CharacterRom[j + 8]);
+                    string lowOrder = BinaryNumberConversion(rom.CharacterRom[j]);
+                    for (int l = 0;l < 8; l++)
+                    {
+                        sprite[i, count, l] = (byte)(int.Parse(highOrder[l].ToString()) * 2 + int.Parse(lowOrder[l].ToString()));
+                    }
+                    count++;
+                }
+                count = 0;
+            }
+        }
+
+        /// <summary>
+        /// 8bit変換
+        /// </summary>
+        /// <returns>8bit</returns>
+        /// <param name="originNumber">元値</param>
+        string BinaryNumberConversion(byte originNumber)
+        {
+            string convertNumber = Convert.ToString(originNumber, 2);
+            if (convertNumber.Length < 8)
+            {
+                for (int i = 0;i < 8 - convertNumber.Length;i++)
+                {
+                    convertNumber = convertNumber.Insert(0, "0");
+                }
+            }
+            return convertNumber;
         }
     }
 }

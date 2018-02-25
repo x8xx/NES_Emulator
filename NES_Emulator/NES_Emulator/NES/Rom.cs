@@ -33,7 +33,7 @@ namespace NES_Emulator.NES
             Header = new byte[0x10];
             ProgramRom = new byte[rom[4] * 0x4000];
             CharacterRom = new byte[rom[5] * 0x2000];
-            Debug.WriteLine(CharacterRom.Length);
+            SpliteRom();
         }
 
         public void RomLoad()
@@ -60,7 +60,6 @@ namespace NES_Emulator.NES
                 {
                     CharacterRom[cCount] = rom[i];
                     cCount++;
-                    //Debug.WriteLine(cCount);
                 }
             }
         }

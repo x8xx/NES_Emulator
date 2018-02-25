@@ -33,13 +33,14 @@ namespace NES_Emulator.ViewModels
            this.fileSelect = fileSelect;
             SelectRom = new DelegateCommand(() =>
             {
-                Test = fileSelect.GetText();
+                /*Test = fileSelect.GetText();
                 TestGenerateSprite sprite = new TestGenerateSprite(TestRomBinary.helloWorld);
-                sprite.GetSprite();
+                sprite.GetSprite();*/
                 //MemoryStream ms = new MemoryStream(sprite.GenerateImage());
                 GameScreen gameScreen = new GameScreen();
                 gameScreen.InitialScreen();
                 Sprite = ImageSource.FromStream(() => gameScreen.ScreenMemoryStream);
+                Ppu ppu = new Ppu(new Rom(TestRomBinary.helloWorld));
             });
         }
 
