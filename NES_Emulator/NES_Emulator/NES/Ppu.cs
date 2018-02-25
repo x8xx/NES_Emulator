@@ -77,12 +77,9 @@ namespace NES_Emulator.NES
                 { 0x11, 0x11, 0x11 }, { 0x11, 0x11, 0x11 } };
 
 
-        byte[] image;
-
         public Ppu()
         {
             PpuAddress = new byte[0x4000];
-            image = new byte[61485];
         }
     }
 }

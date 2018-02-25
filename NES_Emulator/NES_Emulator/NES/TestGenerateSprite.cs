@@ -29,7 +29,6 @@ namespace NES_Emulator.NES
                     string lowOrder = Convert10to2(characterRom[i]);
                     for (int j = 0; j < 8; j++)
                     {
-                        //Debug.WriteLine("k="+k+"i="+i+"j="+j);
                         sprite[k, count, j] = (byte)(int.Parse(highOrder[j].ToString()) * 2 + int.Parse(lowOrder[j].ToString()));
                     }
                     count++;
@@ -110,7 +109,7 @@ namespace NES_Emulator.NES
 
                     writer.Write(40);
                     writer.Write(width);
-                    writer.Write(height);
+                    writer.Write(-height);
                     writer.Write((short)1);
                     writer.Write((short)32);
                     writer.Write(0);
@@ -123,7 +122,7 @@ namespace NES_Emulator.NES
                 }
             }
 
-            int k = 50, count = 7;
+            int k = 50, count = 0;
             int index = 54;
             for (int i = k * 16; i < k * 16 + 8; i++)
             {
@@ -150,7 +149,7 @@ namespace NES_Emulator.NES
                     index += 4;
                 }
                 Debug.WriteLine("");
-                count--;
+                count++;
             }
             return buffer;
         }
