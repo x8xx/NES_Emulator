@@ -18,6 +18,22 @@ namespace NES_Emulator.NES
          * 0x3000～0x3EFF        0x2000-0x2EFFのミラー
          * 0x3F00～0x3F0F 0x0010 バックグラウンドパレット
          * 0x3F10～0x3F1F 0x0010 スプライトパレット
+         * => 0x3F00 背景色
+         *    0x3F01〜0x3F03 バックグラウンドパレット0
+         *    0x3F04 空き領域
+         *    0x3F05〜0x3F07 バックグラウンドパレット1
+         *    0x3F08 空き領域
+         *    0x3F09〜0x3F0B バックグラウンドパレット2
+         *    0x3F0C 空き領域
+         *    0x3F0D〜0x3F0F バックグラウンドパレット3
+         *    0x3F10 0x3F00のミラー
+         *    0x3F11〜0x3F13 スプライトパレット0
+         *    0x3F14 0x3F04のミラー
+         *    0x3F15〜0x3F17 スプライトパレット1
+         *    0x3F18 0x3F08のミラー
+         *    0x3F19〜0x3F1B スプライトパレット2
+         *    0x3F1C 0x3F0Cのミラー
+         *    0x3F1D〜0x3F1F スプライトパレット3
          * 0x3F20～0x3FFF        0x3F00-0x3F1Fのミラー
          */
         byte[] PpuAddress;
@@ -59,13 +75,14 @@ namespace NES_Emulator.NES
                 { 0xAB, 0xF3, 0xBF }, { 0xB3, 0xFF, 0xCF },
                 { 0x9F, 0xFF, 0xF3 }, { 0xDD, 0xDD, 0xDD },
                 { 0x11, 0x11, 0x11 }, { 0x11, 0x11, 0x11 } };
-        
+
+
+        byte[] image;
 
         public Ppu()
         {
             PpuAddress = new byte[0x4000];
+            image = new byte[61485];
         }
-
-
     }
 }

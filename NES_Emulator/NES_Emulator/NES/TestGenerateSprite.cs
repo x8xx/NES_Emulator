@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.IO;
 
 namespace NES_Emulator.NES
 {
@@ -86,9 +87,37 @@ namespace NES_Emulator.NES
                 Debug.WriteLine("\r\n");
             }
         }
-        public void GenerateImage()
+
+        public byte[] GenerateImage()
         {
-            
+            byte[] image = new byte[64 * 3];
+            int k = 50, count = 0, u = 0;;
+            for (int i = k * 16; i < k * 16 + 8; i++)
+            {
+                for (int j = 0; j < 8; j++)
+                {
+                    if (sprite[k, count, j] != 0)
+                    {
+                        image[u] = 0x00;
+                        image[u + 1] = 0x00;
+                        image[u + 2] = 0x00;
+                        Debug.Write("■");
+                    }
+                    else
+                    {
+                        image[u] = 0xff;
+                        image[u + 1] = 0xff;
+                        image[u + 2] = 0xff;
+                        Debug.Write("□");
+                    }
+
+                }
+                u += 4;
+                Debug.WriteLine("");
+                count++;
+            }
+            return image;
         }
+
     }
 }
