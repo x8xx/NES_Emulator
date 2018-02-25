@@ -36,8 +36,10 @@ namespace NES_Emulator.ViewModels
                 Test = fileSelect.GetText();
                 TestGenerateSprite sprite = new TestGenerateSprite(TestRomBinary.helloWorld);
                 sprite.GetSprite();
-                MemoryStream ms = new MemoryStream(sprite.GenerateImage());
-                Sprite = ImageSource.FromStream(() => ms);
+                //MemoryStream ms = new MemoryStream(sprite.GenerateImage());
+                GameScreen gameScreen = new GameScreen();
+                gameScreen.InitialScreen();
+                Sprite = ImageSource.FromStream(() => gameScreen.ScreenMemoryStream);
             });
         }
 

@@ -7,9 +7,11 @@ namespace NES_Emulator.NES
     {
         const int headerSize = 54;
         byte[] screen;
-        public IReadOnlyList<byte> Screen
+        MemoryStream _screenMemoryStream;
+        public MemoryStream ScreenMemoryStream
         {
-            get { return screen; }
+            get { return _screenMemoryStream; }
+            private set { _screenMemoryStream = value; }
         }
 
         /// <summary>
@@ -46,6 +48,7 @@ namespace NES_Emulator.NES
             }
 
             InitialScreen(); //画面の初期化
+            ScreenMemoryStream = new MemoryStream(screen);
         }
 
         /// <summary>
@@ -55,7 +58,7 @@ namespace NES_Emulator.NES
         {
             for (int i = headerSize;i < screen.Length;i++)
             {
-                screen[i] = 0;
+                screen[i] = 200;
             }
         }
 
