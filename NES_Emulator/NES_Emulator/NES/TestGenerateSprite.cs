@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using Xamarin.Forms;
 
 namespace NES_Emulator.NES
 {
@@ -88,35 +89,70 @@ namespace NES_Emulator.NES
             }
         }
 
+        byte[] buffer;
         public byte[] GenerateImage()
         {
-            byte[] image = new byte[64 * 3];
-            int k = 50, count = 0, u = 0;;
+            int width = 8, height = 8;
+            int numPixels = width * height;
+            int numPixelBytes = 4 * numPixels;
+            int fileSize = 54 + numPixelBytes;
+            buffer = new byte[fileSize];
+
+            using(MemoryStream memoryStream = new MemoryStream(buffer))
+            {
+                using(BinaryWriter writer = new BinaryWriter(memoryStream))
+                {
+                    writer.Write(new char[]{ 'B', 'M' });
+                    writer.Write(fileSize);
+                    writer.Write((short)0);
+                    writer.Write((short)0);
+                    writer.Write(54);
+
+                    writer.Write(40);
+                    writer.Write(width);
+                    writer.Write(height);
+                    writer.Write((short)1);
+                    writer.Write((short)32);
+                    writer.Write(0);
+                    writer.Write(numPixelBytes);
+                    writer.Write(0);
+                    writer.Write(0);
+                    writer.Write(0);
+                    writer.Write(0);
+
+                }
+            }
+
+            int k = 50, count = 7;
+            int index = 54;
             for (int i = k * 16; i < k * 16 + 8; i++)
             {
                 for (int j = 0; j < 8; j++)
                 {
                     if (sprite[k, count, j] != 0)
                     {
-                        image[u] = 0x00;
-                        image[u + 1] = 0x00;
-                        image[u + 2] = 0x00;
+                        Color color = Color.Black;
+                        buffer[index] = (byte)(int)(255 * color.B);
+                        buffer[index + 1] = (byte)(int)(255 * color.G);
+                        buffer[index + 2] = (byte)(int)(255 * color.R);
+                        buffer[index + 3] = 255;
                         Debug.Write("■");
                     }
                     else
                     {
-                        image[u] = 0xff;
-                        image[u + 1] = 0xff;
-                        image[u + 2] = 0xff;
+                        Color color = Color.White;
+                        buffer[index] = (byte)(int)(255 * color.B);
+                        buffer[index + 1] = (byte)(int)(255 * color.G);
+                        buffer[index + 2] = (byte)(int)(255 * color.R);
+                        buffer[index + 3] = 255;
                         Debug.Write("□");
                     }
-
+                    index += 4;
                 }
-                u += 4;
                 Debug.WriteLine("");
-                count++;
+                count--;
             }
-            return image;
+            return buffer;
         }
 
     }
