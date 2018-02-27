@@ -1,7 +1,7 @@
 ﻿using System;
 namespace NES_Emulator.NES
 {
-    public class Ppu
+    public class Ppu : PpuRegister
     {
         /*PPUメモリマップ
          * アドレス        サイズ
