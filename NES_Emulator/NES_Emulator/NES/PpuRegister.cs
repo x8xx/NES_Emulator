@@ -15,13 +15,20 @@ namespace NES_Emulator.NES
 
         public PpuRegister(Cpu cpu)
         {
-            
+            PpuCtrl = cpu.CpuAddress[0x2000];
+            PpuMask = cpu.CpuAddress[0x2001];
+            PpuStatus = cpu.CpuAddress[0x2002];
+            OamAddr = cpu.CpuAddress[0x2003];
+            OamData = cpu.CpuAddress[0x2004];
+            PpuScroll = cpu.CpuAddress[0x2005];
+            PpuAddr = cpu.CpuAddress[0x2006];
+            PpuData = cpu.CpuAddress[0x2007];
         }
 
         public byte PpuCtrl
         {
-            get { return _ppuCtrl; }
-            private set { _ppuCtrl = value; }
+            get;
+            private set;
         }
 
         public byte PpuMask

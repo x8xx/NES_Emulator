@@ -79,7 +79,7 @@ namespace NES_Emulator.NES
                 { 0x11, 0x11, 0x11 }, { 0x11, 0x11, 0x11 } };
 
 
-        public Ppu(Rom rom)
+        public Ppu(Rom rom, Cpu cpu) : base(cpu)
         {
             ppuAddress = new byte[0x4000];
             this.rom = rom;

@@ -1,4 +1,4 @@
-﻿using System;
+﻿using System.Collections.Generic;
 
 namespace NES_Emulator.NES
 {
@@ -30,12 +30,33 @@ namespace NES_Emulator.NES
          * 0x8000〜0xBFFF 0x4000 PRG-ROM
          * 0xC000〜0xFFFF 0x4000 PRG-ROM
          */
-        byte[] CpuAddress;
+        byte[] cpuAddress;
 
+        void Write(ushort address, byte data)
+        {
+            switch (address)
+            {
+                case 0x2006:
+                    break;
+                default:
+                    cpuAddress[address] = data;
+                    break;
+            }
+        }
+
+        byte Read(ushort address)
+        {
+            return 0x00;
+        }
+
+        public IReadOnlyList<byte> CpuAddress
+        {
+            get { return cpuAddress; }
+        }
 
         public Cpu()
         {
-            CpuAddress = new byte[0x10000];
+            cpuAddress = new byte[0x10000];
         }
 
         /// <summary>
@@ -85,7 +106,7 @@ namespace NES_Emulator.NES
         {
             ushort address = ++programCounter;
             programCounter++;
-            return CpuAddress[address];
+            return cpuAddress[address];
         }
 
         /// <summary>
@@ -96,7 +117,7 @@ namespace NES_Emulator.NES
         {
             ushort address = ++programCounter;
             programCounter++;
-            return (ushort)(CpuAddress[address] + registerX);
+            return (ushort)(cpuAddress[address] + registerX);
         }
 
         /// <summary>
@@ -107,7 +128,7 @@ namespace NES_Emulator.NES
         {
             ushort address = ++programCounter;
             programCounter++;
-            return (ushort)(CpuAddress[address] + registerY);
+            return (ushort)(cpuAddress[address] + registerY);
         }
 
         /// <summary>
@@ -117,7 +138,7 @@ namespace NES_Emulator.NES
         /// <returns>実効アドレス</returns>
         ushort Absolute()
         {
-            ushort address = (ushort)(CpuAddress[programCounter + 2] * 0x100 + CpuAddress[programCounter + 1]);
+            ushort address = (ushort)(cpuAddress[programCounter + 2] * 0x100 + cpuAddress[programCounter + 1]);
             programCounter += 3;
             return address;
         }
@@ -129,7 +150,7 @@ namespace NES_Emulator.NES
         /// <returns>実効アドレス</returns>
         ushort AbsoluteX()
         {
-            ushort address = (ushort)(CpuAddress[programCounter + 2] * 0x100 + CpuAddress[programCounter + 1]);
+            ushort address = (ushort)(cpuAddress[programCounter + 2] * 0x100 + cpuAddress[programCounter + 1]);
             programCounter += 3;
             return (ushort)(address + registerX);
         }
@@ -141,7 +162,7 @@ namespace NES_Emulator.NES
         /// <returns>実効アドレス</returns>
         ushort AbsoluteY()
         {
-            ushort address = (ushort)(CpuAddress[programCounter + 2] * 0x100 + CpuAddress[programCounter + 1]);
+            ushort address = (ushort)(cpuAddress[programCounter + 2] * 0x100 + cpuAddress[programCounter + 1]);
             programCounter += 3;
             return (ushort)(address + registerY);
         }
@@ -152,7 +173,7 @@ namespace NES_Emulator.NES
         /// <returns>実効アドレス</returns>
         ushort IndirectX()
         {
-            return (ushort)CpuAddress[ZeropageX()];
+            return (ushort)cpuAddress[ZeropageX()];
         }
 
         /// <summary>
@@ -161,7 +182,7 @@ namespace NES_Emulator.NES
         /// <returns>実効アドレス</returns>
         ushort IndirectY()
         {
-            return (ushort)CpuAddress[Zeropage() + registerY];
+            return (ushort)cpuAddress[Zeropage() + registerY];
         }
         /*------------------------------------------------------------
          * アドレッシング・モードここまで
@@ -181,7 +202,7 @@ namespace NES_Emulator.NES
         /// <param name="register">レジスタ</param>
         void LoadToRegister(int cycle, ushort address, ref byte register)
         {
-            register = CpuAddress[address];
+            register = cpuAddress[address];
             FlagNandZ(register);
         }
 
@@ -195,7 +216,7 @@ namespace NES_Emulator.NES
         /// <param name="register">レジスタ</param>
         void StoreToMemory(int cycle, ushort address, ref byte register)
         {
-            CpuAddress[address] = register;
+            cpuAddress[address] = register;
         }
 
         /// <summary>
@@ -226,7 +247,7 @@ namespace NES_Emulator.NES
 
         void ADC(int cycle, ushort address)
         {
-            registerA += (byte)(CpuAddress[address] + cFlag);
+            registerA += (byte)(cpuAddress[address] + cFlag);
             FlagNandZ(registerA);
         }
 
@@ -240,7 +261,7 @@ namespace NES_Emulator.NES
         /// <param name="address">実効アドレス</param>
         void AND(int cycle, ushort address)
         {
-            registerA &= CpuAddress[address];
+            registerA &= cpuAddress[address];
             FlagNandZ(registerA);
         }
 
@@ -269,9 +290,9 @@ namespace NES_Emulator.NES
         /// <param name="address">実効アドレス</param>
         void BIT(int cycle, ushort address)
         {
-            nFlag = (byte)(CpuAddress[address] >> 7);
-            vFlag = (byte)((CpuAddress[address] << 1) >> 7);
-            if ((registerA & CpuAddress[address]) == 0) zFlag = 1;
+            nFlag = (byte)(cpuAddress[address] >> 7);
+            vFlag = (byte)((cpuAddress[address] << 1) >> 7);
+            if ((registerA & cpuAddress[address]) == 0) zFlag = 1;
         }
 
         /// <summary>
@@ -285,7 +306,7 @@ namespace NES_Emulator.NES
         /// <param name="address">実効アドレス</param>
         void Comparison(int cycle, ushort address, ref byte register)
         {
-            byte tmp = (byte)(register - CpuAddress[address]);
+            byte tmp = (byte)(register - cpuAddress[address]);
             FlagNandZ(tmp);
             if (tmp >= 0)
             {
@@ -306,8 +327,8 @@ namespace NES_Emulator.NES
         /// <param name="address">実効アドレス</param>
         void DEC(int cycle, ushort address)
         {
-            CpuAddress[address]--;
-            FlagNandZ(CpuAddress[address]);
+            cpuAddress[address]--;
+            FlagNandZ(cpuAddress[address]);
         }
 
         /// <summary>
@@ -319,7 +340,7 @@ namespace NES_Emulator.NES
         /// <param name="address">実効アドレス</param>
         void EOR(int cycle, ushort address)
         {
-            registerA ^= CpuAddress[address];
+            registerA ^= cpuAddress[address];
             FlagNandZ(registerA);
         }
 
@@ -332,8 +353,8 @@ namespace NES_Emulator.NES
         /// <param name="address">実効アドレス</param>
         void INC(int cycle, ushort address)
         {
-            CpuAddress[address]++;
-            FlagNandZ(CpuAddress[address]);
+            cpuAddress[address]++;
+            FlagNandZ(cpuAddress[address]);
         }
 
         /// <summary>
@@ -360,7 +381,7 @@ namespace NES_Emulator.NES
         /// <param name="address">実効アドレス</param>
         void ORA(int cycle, ushort address)
         {
-            registerA |= CpuAddress[address];
+            registerA |= cpuAddress[address];
             FlagNandZ(registerA);
         }
 
@@ -410,7 +431,7 @@ namespace NES_Emulator.NES
         void Push(byte value)
         {
             programCounter++;
-            CpuAddress[0x0100 + registerS] = value;
+            cpuAddress[0x0100 + registerS] = value;
             registerS--;
         }
 
@@ -424,7 +445,7 @@ namespace NES_Emulator.NES
         {
             programCounter++;
             registerS++;
-            registerA = CpuAddress[0x0100 + registerS];
+            registerA = cpuAddress[0x0100 + registerS];
             FlagNandZ(registerA);
         }
 
@@ -436,7 +457,7 @@ namespace NES_Emulator.NES
         {
             programCounter++;
             registerS++;
-            SetRegisterP(CpuAddress[0x0100 + registerS]);
+            SetRegisterP(cpuAddress[0x0100 + registerS]);
         }
 
         /// <summary>
@@ -446,7 +467,7 @@ namespace NES_Emulator.NES
         /// <param name="address">実効アドレス</param>
         void JMP(int cycle, ushort address)
         {
-            programCounter = CpuAddress[address];
+            programCounter = cpuAddress[address];
         }
 
         void RTI()
@@ -466,7 +487,7 @@ namespace NES_Emulator.NES
             if (flag)
             {
                 sbyte address;
-                byte tmp = CpuAddress[programCounter + 1];
+                byte tmp = cpuAddress[programCounter + 1];
                 if ((tmp >> 7) == 1)
                 {
                     tmp ^= 0xff;
@@ -694,16 +715,16 @@ namespace NES_Emulator.NES
                     programCounter++;
                     break;
                 case 0x06:
-                    ASL(5, ref CpuAddress[Zeropage()]);
+                    ASL(5, ref cpuAddress[Zeropage()]);
                     break;
                 case 0x16:
-                    ASL(6, ref CpuAddress[ZeropageX()]);
+                    ASL(6, ref cpuAddress[ZeropageX()]);
                     break;
                 case 0x0E:
-                    ASL(6, ref CpuAddress[Absolute()]);
+                    ASL(6, ref cpuAddress[Absolute()]);
                     break;
                 case 0x1E:
-                    ASL(7, ref CpuAddress[AbsoluteX()]);
+                    ASL(7, ref cpuAddress[AbsoluteX()]);
                     break;
                 case 0x24:
                     BIT(3, Zeropage());
@@ -850,16 +871,16 @@ namespace NES_Emulator.NES
                     programCounter++;
                     break;
                 case 0x46:
-                    LSR(5, ref CpuAddress[Zeropage()]);
+                    LSR(5, ref cpuAddress[Zeropage()]);
                     break;
                 case 0x56:
-                    LSR(6, ref CpuAddress[ZeropageX()]);
+                    LSR(6, ref cpuAddress[ZeropageX()]);
                     break;
                 case 0x4E:
-                    LSR(6, ref CpuAddress[Absolute()]);
+                    LSR(6, ref cpuAddress[Absolute()]);
                     break;
                 case 0x5E:
-                    LSR(7, ref CpuAddress[AbsoluteX()]);
+                    LSR(7, ref cpuAddress[AbsoluteX()]);
                     break;
                 case 0x09:
                     ORA(2, Immediate());
@@ -890,32 +911,32 @@ namespace NES_Emulator.NES
                     programCounter++;
                     break;
                 case 0x26:
-                    ROL(5, ref CpuAddress[Zeropage()]);
+                    ROL(5, ref cpuAddress[Zeropage()]);
                     break;
                 case 0x36:
-                    ROL(6, ref CpuAddress[ZeropageX()]);
+                    ROL(6, ref cpuAddress[ZeropageX()]);
                     break;
                 case 0x2E:
-                    ROL(6, ref CpuAddress[Absolute()]);
+                    ROL(6, ref cpuAddress[Absolute()]);
                     break;
                 case 0x3E:
-                    ROL(7, ref CpuAddress[AbsoluteX()]);
+                    ROL(7, ref cpuAddress[AbsoluteX()]);
                     break;
                 case 0x6A:
                     ROR(2, ref registerA);
                     programCounter++;
                     break;
                 case 0x66:
-                    ROR(5, ref CpuAddress[Zeropage()]);
+                    ROR(5, ref cpuAddress[Zeropage()]);
                     break;
                 case 0x76:
-                    ROR(6, ref CpuAddress[ZeropageX()]);
+                    ROR(6, ref cpuAddress[ZeropageX()]);
                     break;
                 case 0x6E:
-                    ROR(6, ref CpuAddress[Absolute()]);
+                    ROR(6, ref cpuAddress[Absolute()]);
                     break;
                 case 0x7E:
-                    ROR(7, ref CpuAddress[AbsoluteX()]);
+                    ROR(7, ref cpuAddress[AbsoluteX()]);
                     break;
                 case 0xE9:
                     SBC(2, Immediate());
@@ -957,7 +978,7 @@ namespace NES_Emulator.NES
                     JMP(3, Absolute());
                     break;
                 case 0x6C:
-                    JMP(5, CpuAddress[Absolute()]);
+                    JMP(5, cpuAddress[Absolute()]);
                     break;
                 /*
                  * サブルーチンを呼び出す
@@ -969,7 +990,7 @@ namespace NES_Emulator.NES
                     ushort savePC = --programCounter;
                     Push((byte)(savePC >> 8));
                     Push((byte)((savePC << 8) >> 8));
-                    programCounter = CpuAddress[Absolute()];
+                    programCounter = cpuAddress[Absolute()];
                     break;
                 /*
                  * サブルーチンから復帰する
@@ -977,7 +998,7 @@ namespace NES_Emulator.NES
                  * RTS サイクル数6
                  */
                 case 0x60:
-                    programCounter = (ushort)(CpuAddress[0x0100 + registerS + 2] * 0x0100 + CpuAddress[0x0100 + registerS + 1]);
+                    programCounter = (ushort)(cpuAddress[0x0100 + registerS + 2] * 0x0100 + cpuAddress[0x0100 + registerS + 1]);
                     registerS += 2;
                     programCounter++;
                     break;
