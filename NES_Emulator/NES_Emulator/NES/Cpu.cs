@@ -2,7 +2,7 @@
 
 namespace NES_Emulator.NES
 {
-    public class Cpu
+    public abstract class Cpu
     {
         //レジスタ
         byte registerA; //8bit
@@ -32,31 +32,17 @@ namespace NES_Emulator.NES
          */
         byte[] cpuAddress;
 
-        void Write(ushort address, byte data)
-        {
-            switch (address)
-            {
-                case 0x2006:
-                    break;
-                default:
-                    cpuAddress[address] = data;
-                    break;
-            }
-        }
-
-        byte Read(ushort address)
-        {
-            return 0x00;
-        }
-
-        public IReadOnlyList<byte> CpuAddress
-        {
-            get { return cpuAddress; }
-        }
+        protected abstract void WritePpuRagister(ushort address, byte value);
 
         public Cpu()
         {
             cpuAddress = new byte[0x10000];
+        }
+
+        public void WriteMemory(ushort address, byte value)
+        {
+            if (address >= 0x2000 && address <= 0x2007) WritePpuRagister(address, value);
+            cpuAddress[address] = value;
         }
 
         /// <summary>

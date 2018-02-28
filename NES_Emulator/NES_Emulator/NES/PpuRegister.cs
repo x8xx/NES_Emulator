@@ -1,77 +1,48 @@
 ﻿using System;
 namespace NES_Emulator.NES
 {
-    public class PpuRegister
+    public class PpuRegister : Cpu
     {
-        byte _ppuCtrl; //0x2000 PPUCTRL W コントロールレジスタ1 割り込みなどPPUの設定
-        byte _ppuMask; //0x2001 PPUMASK W コントロールレジスタ2 背景イネーブルなどのPPU設定
-        byte _ppuStatus; //0x2002 PPUSTATUS R PPUステータス PPUステータス
-        byte _oamAddr; //0x2003 OAMADDR W スプライトメモリデータ 書き込むスプライト領域のアドレス
-        byte _oamData; //0x2004 OAMDATA RW デシマルモード スプライト領域のデータ
-        byte _ppuScroll; //0x2005 PPUSCROLL W 背景スクロールオフセット 背景スクロール値
-        byte _ppuAddr; //0x2006 PPUADDR W PPUメモリアドレス 書き込むメモリ領域のアドレス
-        byte _ppuData; //0x2007 PPUDATA RW PPUメモリデータ PPUメモリ領域のデータ
+        protected byte PpuCtrl { get; private set; } //0x2000 PPUCTRL W コントロールレジスタ1 割り込みなどPPUの設定
+        protected byte PpuMask { get; private set; } //0x2001 PPUMASK W コントロールレジスタ2 背景イネーブルなどのPPU設定
+        protected byte PpuStatus { get; private set; } //0x2002 PPUSTATUS R PPUステータス PPUステータス
+        protected byte OamAddr { get; private set; } //0x2003 OAMADDR W スプライトメモリデータ 書き込むスプライト領域のアドレス
+        protected byte OamData { get; private set; } //0x2004 OAMDATA RW デシマルモード スプライト領域のデータ
+        protected byte PpuScroll { get; private set; } //0x2005 PPUSCROLL W 背景スクロールオフセット 背景スクロール値
+        protected byte PpuAddr{ get; private set; } //0x2006 PPUADDR W PPUメモリアドレス 書き込むメモリ領域のアドレス
+        protected byte PpuData{ get; private set; } //0x2007 PPUDATA RW PPUメモリデータ PPUメモリ領域のデータ
 
+        int ppuAddrWriteCount; //0x2006のWrite回数を記録
 
-        public PpuRegister(Cpu cpu)
+        public PpuRegister()
         {
-            PpuCtrl = cpu.CpuAddress[0x2000];
-            PpuMask = cpu.CpuAddress[0x2001];
-            PpuStatus = cpu.CpuAddress[0x2002];
-            OamAddr = cpu.CpuAddress[0x2003];
-            OamData = cpu.CpuAddress[0x2004];
-            PpuScroll = cpu.CpuAddress[0x2005];
-            PpuAddr = cpu.CpuAddress[0x2006];
-            PpuData = cpu.CpuAddress[0x2007];
+            ppuAddrWriteCount = 0;
         }
 
-        public byte PpuCtrl
+        protected override void WritePpuRagister(ushort address, byte value)
         {
-            get;
-            private set;
+            switch (address)
+            {
+                case 0x2000:
+                    break;
+                case 0x2001:
+                    break;
+                case 0x2002:
+                    break;
+                case 0x2003:
+                    break;
+                case 0x2004:
+                    break;
+                case 0x2005:
+                    break;
+                case 0x2006:
+                    break;
+                case 0x2007:
+                    break;
+            }
         }
 
-        public byte PpuMask
-        {
-            get { return _ppuMask; }
-            private set { _ppuMask = value; }
-        }
-
-        public byte PpuStatus
-        {
-            get { return _ppuStatus; }
-            private set { _ppuStatus = value; }
-        }
-
-        public byte OamAddr
-        {
-            get { return _oamAddr; }
-            private set { _oamAddr = value; }
-        }
-
-        public byte OamData
-        {
-            get { return _oamData; }
-            private set { _oamData = value; }
-        }
-
-        public byte PpuScroll
-        {
-            get { return _ppuScroll; }
-            private set { _ppuScroll = value; }
-        }
-
-        public byte PpuAddr
-        {
-            get { return _ppuAddr; }
-            private set { _ppuAddr = value; }
-        }
-
-        public byte PpuData
-        {
-            get { return _ppuData; }
-            private set { _ppuData = value; }
-        }
+       
 
     }
 }
