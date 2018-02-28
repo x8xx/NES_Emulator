@@ -19,7 +19,7 @@ namespace NES_Emulator.NES
             ppuAddrWriteCount = 0;
         }
 
-        protected override void WritePpuRagister(ushort address, byte value)
+        protected override void WritePpuRegister(ushort address, byte value)
         {
             switch (address)
             {
@@ -36,13 +36,28 @@ namespace NES_Emulator.NES
                 case 0x2005:
                     break;
                 case 0x2006:
+                    switch (ppuAddrWriteCount)
+                    {
+                        case 0:
+                            PpuAddr = (byte)(value * 0x100);
+                            ppuAddrWriteCount++;
+                            break;
+                        case 1:
+                            PpuAddr += value;
+                            ppuAddrWriteCount = 0;
+                            break;
+                    }
                     break;
                 case 0x2007:
+                    PpuData = value;
+                    PpuAddr += 0x01;
                     break;
             }
         }
 
-       
-
+        protected override void ReadPpuRegister(ushort address)
+        {
+            
+        }
     }
 }

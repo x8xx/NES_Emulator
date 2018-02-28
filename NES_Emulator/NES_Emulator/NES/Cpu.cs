@@ -32,7 +32,8 @@ namespace NES_Emulator.NES
          */
         byte[] cpuAddress;
 
-        protected abstract void WritePpuRagister(ushort address, byte value);
+        protected abstract void WritePpuRegister(ushort address, byte value);
+        protected abstract void ReadPpuRegister(ushort address);
 
         public Cpu()
         {
@@ -41,8 +42,13 @@ namespace NES_Emulator.NES
 
         public void WriteMemory(ushort address, byte value)
         {
-            if (address >= 0x2000 && address <= 0x2007) WritePpuRagister(address, value);
+            if (address >= 0x2000 && address <= 0x2007) WritePpuRegister(address, value);
             cpuAddress[address] = value;
+        }
+
+        public byte ReadMemory(ushort address)
+        {
+            return 0x00;
         }
 
         /// <summary>
