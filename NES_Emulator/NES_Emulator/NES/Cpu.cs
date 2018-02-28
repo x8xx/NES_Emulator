@@ -52,6 +52,12 @@ namespace NES_Emulator.NES
             return 0x00;
         }
 
+        public void CycleInc(int cycle)
+        {
+            totalCpuCycle += cycle;
+            nes.ppu.TotalPpuCycle += 3 * cycle;
+        }
+
         /// <summary>
         /// Pのゲッター
         /// </summary>
@@ -1051,7 +1057,7 @@ namespace NES_Emulator.NES
                     programCounter++;
                     break;
             }
-            totalCpuCycle += Nes.cpuCycle[opcode];
+            CycleInc(Nes.cpuCycle[opcode]);
         }
     }
 }

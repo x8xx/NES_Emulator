@@ -42,6 +42,8 @@ namespace NES_Emulator.NES
 
         byte[][] screen;
 
+        int _totalPpuCycle; //PPUの合計サイクル数
+        int renderLine; //次に描画するlineを保持
 
         public Ppu(Rom rom)
         {
@@ -49,6 +51,21 @@ namespace NES_Emulator.NES
             this.rom = rom;
             sprite = new byte[rom.CharacterRom.Length / 16, 8, 8];
             screen = new byte[61440][];
+            TotalPpuCycle = 0;
+            renderLine = 0;
+        }
+
+        public int TotalPpuCycle
+        {
+            get { return _totalPpuCycle; }
+            set
+            {
+                _totalPpuCycle = value;
+                if (_totalPpuCycle >= 341)
+                {
+                    _totalPpuCycle -= 341;
+                }
+            }
         }
 
         public void WriteMemory(ushort address, byte value)
@@ -56,7 +73,7 @@ namespace NES_Emulator.NES
             ppuAddress[address] = value;
         }
 
-        public void WriteScreen()
+        public void RenderScreen()
         {
             
         }
