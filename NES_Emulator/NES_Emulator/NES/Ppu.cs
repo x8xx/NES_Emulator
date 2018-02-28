@@ -91,6 +91,11 @@ namespace NES_Emulator.NES
 
         }
 
+        public void WriteMemory(ushort address, byte value)
+        {
+            ppuAddress[address] = value;
+        }
+
         /// <summary>
         /// スプライトを読み込み保存
         /// </summary>
