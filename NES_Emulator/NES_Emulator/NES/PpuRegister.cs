@@ -1,7 +1,7 @@
 ﻿using System;
 namespace NES_Emulator.NES
 {
-    public class PpuRegister : Cpu
+    public class PpuRegister
     {
         protected byte PpuCtrl { get; private set; } //0x2000 PPUCTRL W コントロールレジスタ1 割り込みなどPPUの設定
         protected byte PpuMask { get; private set; } //0x2001 PPUMASK W コントロールレジスタ2 背景イネーブルなどのPPU設定
@@ -13,21 +13,21 @@ namespace NES_Emulator.NES
         protected byte PpuData{ get; private set; } //0x2007 PPUDATA RW PPUメモリデータ PPUメモリ領域のデータ
 
         int ppuAddrWriteCount; //0x2006のWrite回数を記録
+        byte ppuAddressInc; //0x2006のインクリメントする大きさ
 
         public PpuRegister()
         {
             ppuAddrWriteCount = 0;
+            ppuAddressInc = 0x01;
         }
 
-        protected override void WritePpuRegister(ushort address, byte value)
+        public void WritePpuRegister(ushort address, byte value)
         {
             switch (address)
             {
                 case 0x2000:
                     break;
                 case 0x2001:
-                    break;
-                case 0x2002:
                     break;
                 case 0x2003:
                     break;
@@ -50,14 +50,22 @@ namespace NES_Emulator.NES
                     break;
                 case 0x2007:
                     PpuData = value;
-                    PpuAddr += 0x01;
+                    PpuAddr += ppuAddressInc;
                     break;
             }
         }
 
-        protected override void ReadPpuRegister(ushort address)
+        public void ReadPpuRegister(ushort address)
         {
-            
+            switch(address)
+            {
+                case 0x2002:
+                    break;
+                case 0x2004:
+                    break;
+                case 0x2007:
+                    break;
+            }
         }
     }
 }
