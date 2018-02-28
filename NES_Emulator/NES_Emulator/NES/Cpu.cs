@@ -31,12 +31,14 @@ namespace NES_Emulator.NES
          * 0xC000〜0xFFFF 0x4000 PRG-ROM
          */
         byte[] cpuAddress;
+        int totalCpuCycle; //合計サイクル数
 
         Nes nes;
         public Cpu(Nes nes)
         {
             cpuAddress = new byte[0x10000];
             this.nes = nes;
+            totalCpuCycle = 0;
         }
 
         public void WriteMemory(ushort address, byte value)
@@ -191,7 +193,7 @@ namespace NES_Emulator.NES
         /// <param name="cycle">サイクル数</param>
         /// <param name="address">実効アドレス</param>
         /// <param name="register">レジスタ</param>
-        void LoadToRegister(int cycle, ushort address, ref byte register)
+        void LoadToRegister(ushort address, ref byte register)
         {
             register = cpuAddress[address];
             FlagNandZ(register);
@@ -205,7 +207,7 @@ namespace NES_Emulator.NES
         /// <param name="cycle">サイクル数</param>
         /// <param name="address">実効アドレス</param>
         /// <param name="register">レジスタ</param>
-        void StoreToMemory(int cycle, ushort address, ref byte register)
+        void StoreToMemory(ushort address, ref byte register)
         {
             cpuAddress[address] = register;
         }
@@ -236,7 +238,7 @@ namespace NES_Emulator.NES
         }
 
 
-        void ADC(int cycle, ushort address)
+        void ADC(ushort address)
         {
             registerA += (byte)(cpuAddress[address] + cFlag);
             FlagNandZ(registerA);
@@ -250,7 +252,7 @@ namespace NES_Emulator.NES
         /// </summary>
         /// <param name="cycle">サイクル数.</param>
         /// <param name="address">実効アドレス</param>
-        void AND(int cycle, ushort address)
+        void AND(ushort address)
         {
             registerA &= cpuAddress[address];
             FlagNandZ(registerA);
@@ -264,7 +266,7 @@ namespace NES_Emulator.NES
         /// </summary>
         /// <param name="cycle">サイクル数.</param>
         /// <param name="address">実効アドレス</param>
-        void ASL(int cycle, ref byte value)
+        void ASL(ref byte value)
         {
             cFlag = (byte)(value >> 7);
             value <<= 1;
@@ -279,7 +281,7 @@ namespace NES_Emulator.NES
         /// </summary>
         /// <param name="cycle">サイクル数.</param>
         /// <param name="address">実効アドレス</param>
-        void BIT(int cycle, ushort address)
+        void BIT(ushort address)
         {
             nFlag = (byte)(cpuAddress[address] >> 7);
             vFlag = (byte)((cpuAddress[address] << 1) >> 7);
@@ -295,7 +297,7 @@ namespace NES_Emulator.NES
         /// </summary>
         /// <param name="cycle">サイクル数.</param>
         /// <param name="address">実効アドレス</param>
-        void Comparison(int cycle, ushort address, ref byte register)
+        void Comparison(ushort address, ref byte register)
         {
             byte tmp = (byte)(register - cpuAddress[address]);
             FlagNandZ(tmp);
@@ -316,7 +318,7 @@ namespace NES_Emulator.NES
         /// </summary>
         /// <param name="cycle">サイクル数</param>
         /// <param name="address">実効アドレス</param>
-        void DEC(int cycle, ushort address)
+        void DEC(ushort address)
         {
             cpuAddress[address]--;
             FlagNandZ(cpuAddress[address]);
@@ -329,7 +331,7 @@ namespace NES_Emulator.NES
         /// </summary>
         /// <param name="cycle">サイクル数.</param>
         /// <param name="address">実効アドレス</param>
-        void EOR(int cycle, ushort address)
+        void EOR(ushort address)
         {
             registerA ^= cpuAddress[address];
             FlagNandZ(registerA);
@@ -342,7 +344,7 @@ namespace NES_Emulator.NES
         /// </summary>
         /// <param name="cycle">サイクル数</param>
         /// <param name="address">実効アドレス</param>
-        void INC(int cycle, ushort address)
+        void INC(ushort address)
         {
             cpuAddress[address]++;
             FlagNandZ(cpuAddress[address]);
@@ -356,7 +358,7 @@ namespace NES_Emulator.NES
         /// </summary>
         /// <param name="cycle">サイクル数.</param>
         /// <param name="address">実効アドレス</param>
-        void LSR(int cycle, ref byte value)
+        void LSR(ref byte value)
         {
             cFlag = (byte)((value << 7) >> 7);
             value >>= 1;
@@ -370,7 +372,7 @@ namespace NES_Emulator.NES
         /// </summary>
         /// <param name="cycle">サイクル数.</param>
         /// <param name="address">実効アドレス</param>
-        void ORA(int cycle, ushort address)
+        void ORA(ushort address)
         {
             registerA |= cpuAddress[address];
             FlagNandZ(registerA);
@@ -384,7 +386,7 @@ namespace NES_Emulator.NES
         /// </summary>
         /// <param name="cycle">サイクル数.</param>
         /// <param name="address">値</param>
-        void ROL(int cycle, ref byte value)
+        void ROL(ref byte value)
         {
             byte tmp = (byte)(value >> 7);
             value = (byte)((value << 1) + cFlag);
@@ -400,7 +402,7 @@ namespace NES_Emulator.NES
         /// </summary>
         /// <param name="cycle">サイクル数.</param>
         /// <param name="address">値</param>
-        void ROR(int cycle, ref byte value)
+        void ROR(ref byte value)
         {
             byte tmp = (byte)((value << 7) >> 7);
             value = (byte)((value >> 1) + nFlag * 0x80);
@@ -408,7 +410,7 @@ namespace NES_Emulator.NES
             FlagNandZ(value);
         }
 
-        void SBC(int cycle, ushort address)
+        void SBC(ushort address)
         {
 
         }
@@ -456,7 +458,7 @@ namespace NES_Emulator.NES
         /// </summary>
         /// <param name="cycle">サイクル数</param>
         /// <param name="address">実効アドレス</param>
-        void JMP(int cycle, ushort address)
+        void JMP(ushort address)
         {
             programCounter = cpuAddress[address];
         }
@@ -543,97 +545,97 @@ namespace NES_Emulator.NES
             switch (opcode)
             {
                 case 0xA9:
-                    LoadToRegister(2, Immediate(), ref registerA);
+                    LoadToRegister(Immediate(), ref registerA);
                     break;
                 case 0xA5:
-                    LoadToRegister(3, Zeropage(), ref registerA);
+                    LoadToRegister(Zeropage(), ref registerA);
                     break;
                 case 0xB5:
-                    LoadToRegister(4, ZeropageX(), ref registerA);
+                    LoadToRegister(ZeropageX(), ref registerA);
                     break;
                 case 0xAD:
-                    LoadToRegister(4, Absolute(), ref registerA);
+                    LoadToRegister(Absolute(), ref registerA);
                     break;
                 case 0xBD:
-                    LoadToRegister(4, AbsoluteX(), ref registerA);
+                    LoadToRegister(AbsoluteX(), ref registerA);
                     break;
                 case 0xB9:
-                    LoadToRegister(4, AbsoluteY(), ref registerA);
+                    LoadToRegister(AbsoluteY(), ref registerA);
                     break;
                 case 0xA1:
-                    LoadToRegister(6, IndirectX(), ref registerA);
+                    LoadToRegister(IndirectX(), ref registerA);
                     break;
                 case 0xB1:
-                    LoadToRegister(5, IndirectY(), ref registerA);
+                    LoadToRegister(IndirectY(), ref registerA);
                     break;
                 case 0xA2:
-                    LoadToRegister(2, Immediate(), ref registerX);
+                    LoadToRegister(Immediate(), ref registerX);
                     break;
                 case 0xA6:
-                    LoadToRegister(3, Zeropage(), ref registerX);
+                    LoadToRegister(Zeropage(), ref registerX);
                     break;
                 case 0xB6:
-                    LoadToRegister(4, ZeropageY(), ref registerX);
+                    LoadToRegister(ZeropageY(), ref registerX);
                     break;
                 case 0xAE:
-                    LoadToRegister(4, Absolute(), ref registerX);
+                    LoadToRegister(Absolute(), ref registerX);
                     break;
                 case 0xBE:
-                    LoadToRegister(4, AbsoluteY(), ref registerX);
+                    LoadToRegister(AbsoluteY(), ref registerX);
                     break;
                 case 0xA0:
-                    LoadToRegister(2, Immediate(), ref registerY);
+                    LoadToRegister(Immediate(), ref registerY);
                     break;
                 case 0xA4:
-                    LoadToRegister(3, Zeropage(), ref registerY);
+                    LoadToRegister(Zeropage(), ref registerY);
                     break;
                 case 0xB4:
-                    LoadToRegister(4, ZeropageX(), ref registerY);
+                    LoadToRegister(ZeropageX(), ref registerY);
                     break;
                 case 0xAC:
-                    LoadToRegister(4, Absolute(), ref registerY);
+                    LoadToRegister(Absolute(), ref registerY);
                     break;
                 case 0xBC:
-                    LoadToRegister(4, AbsoluteX(), ref registerY);
+                    LoadToRegister(AbsoluteX(), ref registerY);
                     break;
                 case 0x85:
-                    StoreToMemory(3, Zeropage(), ref registerA);
+                    StoreToMemory(Zeropage(), ref registerA);
                     break;
                 case 0x95:
-                    StoreToMemory(4, ZeropageX(), ref registerA);
+                    StoreToMemory(ZeropageX(), ref registerA);
                     break;
                 case 0x8D:
-                    StoreToMemory(4, Absolute(), ref registerA);
+                    StoreToMemory(Absolute(), ref registerA);
                     break;
                 case 0x9D:
-                    StoreToMemory(5, AbsoluteX(), ref registerA);
+                    StoreToMemory(AbsoluteX(), ref registerA);
                     break;
                 case 0x99:
-                    StoreToMemory(5, AbsoluteY(), ref registerA);
+                    StoreToMemory(AbsoluteY(), ref registerA);
                     break;
                 case 0x81:
-                    StoreToMemory(6, IndirectX(), ref registerA);
+                    StoreToMemory(IndirectX(), ref registerA);
                     break;
                 case 0x91:
-                    StoreToMemory(6, IndirectY(), ref registerA);
+                    StoreToMemory(IndirectY(), ref registerA);
                     break;
                 case 0x86:
-                    StoreToMemory(3, Zeropage(), ref registerX);
+                    StoreToMemory(Zeropage(), ref registerX);
                     break;
                 case 0x96:
-                    StoreToMemory(4, ZeropageY(), ref registerX);
+                    StoreToMemory(ZeropageY(), ref registerX);
                     break;
                 case 0x8E:
-                    StoreToMemory(4, Absolute(), ref registerX);
+                    StoreToMemory(Absolute(), ref registerX);
                     break;
                 case 0x84:
-                    StoreToMemory(3, Zeropage(), ref registerY);
+                    StoreToMemory(Zeropage(), ref registerY);
                     break;
                 case 0x94:
-                    StoreToMemory(4, ZeropageX(), ref registerY);
+                    StoreToMemory(ZeropageX(), ref registerY);
                     break;
                 case 0x8C:
-                    StoreToMemory(4, Absolute(), ref registerY);
+                    StoreToMemory(Absolute(), ref registerY);
                     break;
                 case 0xAA:
                     CopyRegister(ref registerA, ref registerX);
@@ -654,128 +656,128 @@ namespace NES_Emulator.NES
                     CopyRegister(ref registerY, ref registerA);
                     break;
                 case 0x69:
-                    ADC(2, Immediate());
+                    ADC(Immediate());
                     break;
                 case 0x65:
-                    ADC(3, Zeropage());
+                    ADC(Zeropage());
                     break;
                 case 0x75:
-                    ADC(4, ZeropageX());
+                    ADC(ZeropageX());
                     break;
                 case 0x6D:
-                    ADC(4, Absolute());
+                    ADC(Absolute());
                     break;
                 case 0x7D:
-                    ADC(4, AbsoluteX());
+                    ADC(AbsoluteX());
                     break;
                 case 0x79:
-                    ADC(4, AbsoluteY());
+                    ADC(AbsoluteY());
                     break;
                 case 0x61:
-                    ADC(6, IndirectX());
+                    ADC(IndirectX());
                     break;
                 case 0x71:
-                    ADC(5, IndirectY());
+                    ADC(IndirectY());
                     break;
                 case 0x29:
-                    AND(2, Immediate());
+                    AND(Immediate());
                     break;
                 case 0x25:
-                    AND(3, Zeropage());
+                    AND(Zeropage());
                     break;
                 case 0x35:
-                    AND(4, ZeropageX());
+                    AND(ZeropageX());
                     break;
                 case 0x2D:
-                    AND(4, Absolute());
+                    AND(Absolute());
                     break;
                 case 0x3D:
-                    AND(4, AbsoluteX());
+                    AND(AbsoluteX());
                     break;
                 case 0x39:
-                    AND(4, AbsoluteY());
+                    AND(AbsoluteY());
                     break;
                 case 0x21:
-                    AND(6, IndirectX());
+                    AND(IndirectX());
                     break;
                 case 0x31:
-                    AND(5, IndirectY());
+                    AND(IndirectY());
                     break;
                 case 0x0A:
-                    ASL(2, ref registerA);
+                    ASL(ref registerA);
                     programCounter++;
                     break;
                 case 0x06:
-                    ASL(5, ref cpuAddress[Zeropage()]);
+                    ASL(ref cpuAddress[Zeropage()]);
                     break;
                 case 0x16:
-                    ASL(6, ref cpuAddress[ZeropageX()]);
+                    ASL(ref cpuAddress[ZeropageX()]);
                     break;
                 case 0x0E:
-                    ASL(6, ref cpuAddress[Absolute()]);
+                    ASL(ref cpuAddress[Absolute()]);
                     break;
                 case 0x1E:
-                    ASL(7, ref cpuAddress[AbsoluteX()]);
+                    ASL(ref cpuAddress[AbsoluteX()]);
                     break;
                 case 0x24:
-                    BIT(3, Zeropage());
+                    BIT(Zeropage());
                     break;
                 case 0x2C:
-                    BIT(4, Absolute());
+                    BIT(Absolute());
                     break;
                 case 0xC9:
-                    Comparison(2, Immediate(), ref registerA);
+                    Comparison(Immediate(), ref registerA);
                     break;
                 case 0xC5:
-                    Comparison(3, Zeropage(), ref registerA);
+                    Comparison(Zeropage(), ref registerA);
                     break;
                 case 0xD5:
-                    Comparison(4, ZeropageX(), ref registerA);
+                    Comparison(ZeropageX(), ref registerA);
                     break;
                 case 0xCD:
-                    Comparison(4, Absolute(), ref registerA);
+                    Comparison(Absolute(), ref registerA);
                     break;
                 case 0xDD:
-                    Comparison(4, AbsoluteX(), ref registerA);
+                    Comparison(AbsoluteX(), ref registerA);
                     break;
                 case 0xD9:
-                    Comparison(4, AbsoluteY(), ref registerA);
+                    Comparison(AbsoluteY(), ref registerA);
                     break;
                 case 0xC1:
-                    Comparison(6, IndirectX(), ref registerA);
+                    Comparison(IndirectX(), ref registerA);
                     break;
                 case 0xD1:
-                    Comparison(5, IndirectY(), ref registerA);
+                    Comparison(IndirectY(), ref registerA);
                     break;
                 case 0xE0:
-                    Comparison(2, Immediate(), ref registerX);
+                    Comparison(Immediate(), ref registerX);
                     break;
                 case 0xE4:
-                    Comparison(3, Zeropage(), ref registerX);
+                    Comparison(Zeropage(), ref registerX);
                     break;
                 case 0xEC:
-                    Comparison(4, Absolute(), ref registerX);
+                    Comparison(Absolute(), ref registerX);
                     break;
                 case 0xC0:
-                    Comparison(2, Immediate(), ref registerY);
+                    Comparison(Immediate(), ref registerY);
                     break;
                 case 0xC4:
-                    Comparison(3, Zeropage(), ref registerY);
+                    Comparison(Zeropage(), ref registerY);
                     break;
                 case 0xCC:
-                    Comparison(4, Absolute(), ref registerY);
+                    Comparison(Absolute(), ref registerY);
                     break;
                 case 0xC6:
-                    DEC(5, Zeropage());
+                    DEC(Zeropage());
                     break;
                 case 0xD6:
-                    DEC(6, ZeropageX());
+                    DEC(ZeropageX());
                     break;
                 case 0xCE:
-                    DEC(6, Absolute());
+                    DEC(Absolute());
                     break;
                 case 0xDE:
-                    DEC(7, AbsoluteX());
+                    DEC(AbsoluteX());
                     break;
                 /*
                  * Xをデクリメント
@@ -800,40 +802,40 @@ namespace NES_Emulator.NES
                     FlagNandZ(registerX);
                     break;
                 case 0x49:
-                    EOR(2, Immediate());
+                    EOR(Immediate());
                     break;
                 case 0x45:
-                    EOR(3, Zeropage());
+                    EOR(Zeropage());
                     break;
                 case 0x55:
-                    EOR(4, ZeropageX());
+                    EOR(ZeropageX());
                     break;
                 case 0x4D:
-                    EOR(4, Absolute());
+                    EOR(Absolute());
                     break;
                 case 0x5D:
-                    EOR(4, AbsoluteX());
+                    EOR(AbsoluteX());
                     break;
                 case 0x59:
-                    EOR(4, AbsoluteY());
+                    EOR(AbsoluteY());
                     break;
                 case 0x41:
-                    EOR(6, IndirectX());
+                    EOR(IndirectX());
                     break;
                 case 0x51:
-                    EOR(5, IndirectY());
+                    EOR(IndirectY());
                     break;
                 case 0xE6:
-                    INC(5, Zeropage());
+                    INC(Zeropage());
                     break;
                 case 0xF6:
-                    INC(6, ZeropageX());
+                    INC(ZeropageX());
                     break;
                 case 0xEE:
-                    INC(6, Absolute());
+                    INC(Absolute());
                     break;
                 case 0xFE:
-                    INC(7, AbsoluteX());
+                    INC(AbsoluteX());
                     break;
                 /*
                  * Xをインクリメント
@@ -858,100 +860,100 @@ namespace NES_Emulator.NES
                     FlagNandZ(registerY);
                     break;
                 case 0x4A:
-                    LSR(2, ref registerA);
+                    LSR(ref registerA);
                     programCounter++;
                     break;
                 case 0x46:
-                    LSR(5, ref cpuAddress[Zeropage()]);
+                    LSR(ref cpuAddress[Zeropage()]);
                     break;
                 case 0x56:
-                    LSR(6, ref cpuAddress[ZeropageX()]);
+                    LSR(ref cpuAddress[ZeropageX()]);
                     break;
                 case 0x4E:
-                    LSR(6, ref cpuAddress[Absolute()]);
+                    LSR(ref cpuAddress[Absolute()]);
                     break;
                 case 0x5E:
-                    LSR(7, ref cpuAddress[AbsoluteX()]);
+                    LSR(ref cpuAddress[AbsoluteX()]);
                     break;
                 case 0x09:
-                    ORA(2, Immediate());
+                    ORA(Immediate());
                     break;
                 case 0x05:
-                    ORA(3, Zeropage());
+                    ORA(Zeropage());
                     break;
                 case 0x15:
-                    ORA(4, ZeropageX());
+                    ORA(ZeropageX());
                     break;
                 case 0x0D:
-                    ORA(4, Absolute());
+                    ORA(Absolute());
                     break;
                 case 0x1D:
-                    ORA(4, AbsoluteX());
+                    ORA(AbsoluteX());
                     break;
                 case 0x19:
-                    ORA(4, AbsoluteY());
+                    ORA(AbsoluteY());
                     break;
                 case 0x01:
-                    ORA(6, IndirectX());
+                    ORA(IndirectX());
                     break;
                 case 0x11:
-                    ORA(5, IndirectY());
+                    ORA(IndirectY());
                     break;
                 case 0x2A:
-                    ROL(2, ref registerA);
+                    ROL(ref registerA);
                     programCounter++;
                     break;
                 case 0x26:
-                    ROL(5, ref cpuAddress[Zeropage()]);
+                    ROL(ref cpuAddress[Zeropage()]);
                     break;
                 case 0x36:
-                    ROL(6, ref cpuAddress[ZeropageX()]);
+                    ROL(ref cpuAddress[ZeropageX()]);
                     break;
                 case 0x2E:
-                    ROL(6, ref cpuAddress[Absolute()]);
+                    ROL(ref cpuAddress[Absolute()]);
                     break;
                 case 0x3E:
-                    ROL(7, ref cpuAddress[AbsoluteX()]);
+                    ROL(ref cpuAddress[AbsoluteX()]);
                     break;
                 case 0x6A:
-                    ROR(2, ref registerA);
+                    ROR(ref registerA);
                     programCounter++;
                     break;
                 case 0x66:
-                    ROR(5, ref cpuAddress[Zeropage()]);
+                    ROR(ref cpuAddress[Zeropage()]);
                     break;
                 case 0x76:
-                    ROR(6, ref cpuAddress[ZeropageX()]);
+                    ROR(ref cpuAddress[ZeropageX()]);
                     break;
                 case 0x6E:
-                    ROR(6, ref cpuAddress[Absolute()]);
+                    ROR(ref cpuAddress[Absolute()]);
                     break;
                 case 0x7E:
-                    ROR(7, ref cpuAddress[AbsoluteX()]);
+                    ROR(ref cpuAddress[AbsoluteX()]);
                     break;
                 case 0xE9:
-                    SBC(2, Immediate());
+                    SBC(Immediate());
                     break;
                 case 0xE5:
-                    SBC(3, Zeropage());
+                    SBC(Zeropage());
                     break;
                 case 0xF5:
-                    SBC(4, ZeropageX());
+                    SBC(ZeropageX());
                     break;
                 case 0xED:
-                    SBC(4, Absolute());
+                    SBC(Absolute());
                     break;
                 case 0xFD:
-                    SBC(4, AbsoluteX());
+                    SBC(AbsoluteX());
                     break;
                 case 0xF9:
-                    SBC(4, AbsoluteY());
+                    SBC(AbsoluteY());
                     break;
                 case 0xE1:
-                    SBC(6, IndirectX());
+                    SBC(IndirectX());
                     break;
                 case 0xF1:
-                    SBC(5, IndirectY());
+                    SBC(IndirectY());
                     break;
                 case 0x48:
                     Push(registerA);
@@ -966,10 +968,10 @@ namespace NES_Emulator.NES
                     PLP();
                     break;
                 case 0x4C:
-                    JMP(3, Absolute());
+                    JMP(Absolute());
                     break;
                 case 0x6C:
-                    JMP(5, cpuAddress[Absolute()]);
+                    JMP(cpuAddress[Absolute()]);
                     break;
                 /*
                  * サブルーチンを呼び出す
@@ -1049,6 +1051,7 @@ namespace NES_Emulator.NES
                     programCounter++;
                     break;
             }
+            totalCpuCycle += Nes.cpuCycle[opcode];
         }
     }
 }

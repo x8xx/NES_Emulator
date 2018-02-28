@@ -7,12 +7,7 @@ namespace NES_Emulator.NES
     {
         const int headerSize = 54;
         byte[] screen;
-        MemoryStream _screenMemoryStream;
-        public MemoryStream ScreenMemoryStream
-        {
-            get { return _screenMemoryStream; }
-            private set { _screenMemoryStream = value; }
-        }
+        public MemoryStream ScreenMemoryStream { get; private set; }
 
         /// <summary>
         /// BMPを作成
@@ -66,7 +61,7 @@ namespace NES_Emulator.NES
         /// 画面の更新
         /// </summary>
         /// <param name="table">Table.</param>
-        public void UpdateScreen(byte[][] table)
+        public void RenderScreen(byte[][] table, int line)
         {
             for (int i = 0;i < table.Length;i += 4)
             {
