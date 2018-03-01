@@ -75,7 +75,10 @@ namespace NES_Emulator.NES
 
         public void RenderScreen()
         {
-            
+            for (int i = 0 + renderLine * 256;i < (renderLine + 1) * 256;i++)
+            {
+                screen[i] = Nes.paletteColors[];
+            }
         }
 
         /// <summary>
