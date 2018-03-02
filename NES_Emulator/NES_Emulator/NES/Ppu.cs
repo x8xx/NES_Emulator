@@ -37,6 +37,38 @@ namespace NES_Emulator.NES
          * 0x3F20～0x3FFF        0x3F00-0x3F1Fのミラー
          */
         byte[] ppuAddress;
+
+        /* OAM (Object Attribute Memory)
+         *  スプライト管理メモリ
+         *  Size : 256byte
+         *  1スプライト4byteの構造体 64個のスプライトを保持
+         *  スプライト構造
+         *      Sprite.y
+         *          y座標
+         *      Sprite.tile
+         *          スプライトSizeが8x8の場合タイルIDそのもの
+         *          スプライトSizeが8x16の場合は以下のようになる
+         *          bit 76543210
+         *              TTTTTTTP
+         *          P : パターンテーブル選択 0:0x0000, 1:0x1000
+         *          T : スプライト上半分のタイルIDを2*Tとし, 下半分を2*T+1とする
+         *      Sprite.attr
+         *          bit 76543210
+         *              VHP...CC
+         *          V : 垂直反転
+         *          H : 水平反転
+         *          P : 優先度(0:前面, 1:背面)
+         *          C : パレット
+         *      Sprite.x
+         *          x座標
+         * 
+         * oam[i, 0] = Sprite.y
+         * oam[i, 1] = Sprite.tile
+         * oam[i, 2] = Sprite.attr
+         * oam[i, 3] = Sprite.x
+         */
+        byte[,] oam;
+
         byte[,,] sprite; //Sprite保存用
         Rom rom;
 
@@ -44,6 +76,7 @@ namespace NES_Emulator.NES
 
         int _totalPpuCycle; //PPUの合計サイクル数
         int renderLine; //次に描画するlineを保持
+        int spriteLine; //描画中スプライトをどの列まで描画したかを保持
 
         public Ppu(Rom rom)
         {
@@ -53,6 +86,7 @@ namespace NES_Emulator.NES
             screen = new byte[61440][];
             TotalPpuCycle = 0;
             renderLine = 0;
+            spriteLine = 0;
         }
 
         public int TotalPpuCycle
@@ -75,10 +109,15 @@ namespace NES_Emulator.NES
 
         public void RenderScreen()
         {
+            int nameTableNumber = 0x2000;
+            if ((renderLine % 8) == 0) nameTableNumber += (renderLine / 8) * 8;
             for (int i = 0 + renderLine * 256;i < (renderLine + 1) * 256;i++)
             {
-                screen[i] = Nes.paletteColors[];
+                if ((i % 8) == 0) nameTableNumber++;
+                screen[i] = Nes.paletteColors[ppuAddress[0x3F00 + 4 * ppuAddress[0x23C0] + sprite[ppuAddress[nameTableNumber], spriteLine, i - renderLine]]];
             }
+            spriteLine++;
+            if (spriteLine > 7) spriteLine = 0;
         }
 
         /// <summary>
