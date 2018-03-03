@@ -102,6 +102,7 @@ namespace NES_Emulator.NES
                 _totalPpuCycle = value;
                 if (_totalPpuCycle >= 341)
                 {
+                    BgRenderScreen();
                     _totalPpuCycle -= 341;
                 }
             }
@@ -112,23 +113,52 @@ namespace NES_Emulator.NES
             ppuAddress[address] = value;
         }
 
-        public void BgRenderScreen()
+        void BgRenderScreen()
         {
             int nameTableNumber = 0x2000;
-            int spriteColumn = 0;
+            int attrTableNumber = 0x23C0;
+            int attrTablePaletteNumber = 0;
+            int column = 0;
+            int unitRenderLine = renderLine - (32 * (renderLine / 32));
             if ((renderLine % 8) == 0) nameTableNumber += (renderLine / 8) * 8;
+
             for (int i = renderLine * 256;i < (renderLine + 1) * 256;i++)
             {
+                int unitColumn = column - (32 * (column / 32));
+
                 if ((i % 8) == 0) nameTableNumber++;
-                if (spriteColumn == 8) spriteColumn = 0;
-                screen[i] = Nes.paletteColors[ppuAddress[0x3F00 + 4 * ppuAddress[0x23C0] + sprite[ppuAddress[nameTableNumber], spriteLine, spriteColumn]]];
-                spriteColumn++;
+                if ((i % 32) == 0) attrTableNumber++;
+
+                if (unitRenderLine < 16 && unitColumn < 16)
+                {
+                    attrTablePaletteNumber = 0;
+                }
+                else if (unitRenderLine < 16 && unitColumn >= 16)
+                {
+                    attrTablePaletteNumber = 1;
+                }
+                else if (unitRenderLine >= 16 && unitColumn < 16)
+                {
+                    attrTablePaletteNumber = 2;
+                }
+                else if (unitRenderLine >= 16 && unitColumn >= 16)
+                {
+                    attrTablePaletteNumber = 3;
+                }
+
+                screen[i] = Nes.paletteColors[ppuAddress[0x3F00 + 4 * GetPalette(ppuAddress[attrTableNumber], attrTablePaletteNumber) + sprite[ppuAddress[nameTableNumber], spriteLine, column - (8 * (column / 8))]]];
+                column++;
             }
             spriteLine++;
             if (spriteLine > 7) spriteLine = 0;
             renderLine++;
         }
 
+        int GetPalette(byte value, int order)
+        {
+            string binaryNumber = BinaryNumberConversion(value);
+            return int.Parse(binaryNumber[order * 2 + 1].ToString()) + int.Parse(binaryNumber[order * 2].ToString());
+        }
         /// <summary>
         /// スプライトを読み込み保存
         /// </summary>
