@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 namespace NES_Emulator.NES
 {
     public class Ppu
@@ -73,6 +74,10 @@ namespace NES_Emulator.NES
         Rom rom;
 
         byte[][] screen;
+        public IReadOnlyList<byte[]> Screen
+        {
+            get { return screen; }
+        }
 
         int _totalPpuCycle; //PPUの合計サイクル数
         int renderLine; //次に描画するlineを保持
@@ -107,17 +112,21 @@ namespace NES_Emulator.NES
             ppuAddress[address] = value;
         }
 
-        public void RenderScreen()
+        public void BgRenderScreen()
         {
             int nameTableNumber = 0x2000;
+            int spriteColumn = 0;
             if ((renderLine % 8) == 0) nameTableNumber += (renderLine / 8) * 8;
-            for (int i = 0 + renderLine * 256;i < (renderLine + 1) * 256;i++)
+            for (int i = renderLine * 256;i < (renderLine + 1) * 256;i++)
             {
                 if ((i % 8) == 0) nameTableNumber++;
-                screen[i] = Nes.paletteColors[ppuAddress[0x3F00 + 4 * ppuAddress[0x23C0] + sprite[ppuAddress[nameTableNumber], spriteLine, i - renderLine]]];
+                if (spriteColumn == 8) spriteColumn = 0;
+                screen[i] = Nes.paletteColors[ppuAddress[0x3F00 + 4 * ppuAddress[0x23C0] + sprite[ppuAddress[nameTableNumber], spriteLine, spriteColumn]]];
+                spriteColumn++;
             }
             spriteLine++;
             if (spriteLine > 7) spriteLine = 0;
+            renderLine++;
         }
 
         /// <summary>
