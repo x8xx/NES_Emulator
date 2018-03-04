@@ -61,7 +61,7 @@ namespace NES_Emulator.NES
         /// 画面の更新
         /// </summary>
         /// <param name="table">Table.</param>
-        public void RenderScreen(byte[][] table, int line)
+        public void RenderScreen(byte[][] table)
         {
             for (int i = 0;i < table.Length;i += 4)
             {

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 namespace NES_Emulator.NES
 {
     public class Ppu
@@ -79,7 +80,7 @@ namespace NES_Emulator.NES
         }
 
         int _totalPpuCycle; //PPUの合計サイクル数
-        int renderLine; //次に描画するlineを保持
+        int _renderLine; //次に描画するlineを保持
         int spriteLine; //描画中スプライトをどの列まで描画したかを保持
 
         Nes nes;
@@ -92,7 +93,7 @@ namespace NES_Emulator.NES
             screen = new byte[61440][];
 
             TotalPpuCycle = 0;
-            renderLine = 0;
+            RenderLine = 0;
             spriteLine = 0;
         }
 
@@ -110,6 +111,19 @@ namespace NES_Emulator.NES
             }
         }
 
+        int RenderLine
+        {
+            get { return _renderLine; }
+            set
+            {
+                _renderLine = value;
+                if (_renderLine > 240)
+                {
+                    nes.gameScreen.RenderScreen(screen);
+                }
+            }
+        }
+
         public void WriteMemory(ushort address, byte value)
         {
             ppuAddress[address] = value;
@@ -121,10 +135,10 @@ namespace NES_Emulator.NES
             int attrTableNumber = 0x23C0;
             int attrTablePaletteNumber = 0;
             int column = 0;
-            int unitRenderLine = renderLine - (32 * (renderLine / 32));
-            if ((renderLine % 8) == 0) nameTableNumber += (renderLine / 8) * 8;
+            int unitRenderLine = RenderLine - (32 * (RenderLine / 32));
+            if ((RenderLine % 8) == 0) nameTableNumber += (RenderLine / 8) * 8;
 
-            for (int i = renderLine * 256;i < (renderLine + 1) * 256;i++)
+            for (int i = RenderLine * 256;i < (RenderLine + 1) * 256;i++)
             {
                 int unitColumn = column - (32 * (column / 32));
 
@@ -153,7 +167,7 @@ namespace NES_Emulator.NES
             }
             spriteLine++;
             if (spriteLine > 7) spriteLine = 0;
-            renderLine++;
+            RenderLine++;
         }
 
         int GetPalette(byte value, int order)

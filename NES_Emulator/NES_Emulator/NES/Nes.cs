@@ -9,6 +9,7 @@ namespace NES_Emulator.NES
         public PpuRegister ppuRegister { get; private set; }
         public Ppu ppu { get; private set; }
         public Rom rom { get; private set; }
+        public GameScreen gameScreen { get; private set; }
 
         public Nes()
         {
@@ -35,6 +36,8 @@ namespace NES_Emulator.NES
             {
                 cpu.WriteMemory((ushort)(0x8000 + i), rom.ProgramRom[i]);
             }
+
+            gameScreen = new GameScreen();
             return true;
         }
 

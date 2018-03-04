@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Diagnostics;
+
 namespace NES_Emulator.NES
 {
     public class PpuRegister
@@ -14,12 +16,12 @@ namespace NES_Emulator.NES
         int ppuAddrWriteCount; //0x2006のWrite回数を記録
         byte ppuAddressInc; //0x2006のインクリメントする大きさ
 
-        Ppu ppu;
+        Nes nes;
         public PpuRegister(Nes nes)
         {
             ppuAddrWriteCount = 0;
             ppuAddressInc = 0x01;
-            ppu = nes.ppu;
+            this.nes = nes;
         }
 
         public void WritePpuRegister(ushort address, byte value)
@@ -37,6 +39,7 @@ namespace NES_Emulator.NES
                 case 0x2005:
                     break;
                 case 0x2006:
+                    Debug.WriteLine("0x2006: " + ppuAddrWriteCount + ": " + value);
                     switch (ppuAddrWriteCount)
                     {
                         case 0:
@@ -50,8 +53,9 @@ namespace NES_Emulator.NES
                     }
                     break;
                 case 0x2007:
+                    Debug.WriteLine("0x2007: " + value);
                     ppuData = value;
-                    ppu.WriteMemory(ppuAddr, value);
+                    nes.ppu.WriteMemory(ppuAddr, value);
                     ppuAddr += ppuAddressInc;
                     break;
             }

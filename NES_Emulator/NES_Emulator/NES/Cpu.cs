@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace NES_Emulator.NES
 {
@@ -37,7 +38,14 @@ namespace NES_Emulator.NES
         public Cpu(Nes nes)
         {
             cpuAddress = new byte[0x10000];
-            programCounter = 0x8000;
+            programCounter = 0x8000; //PC初期化
+            //フラグ初期化
+            nFlag = 0;
+            vFlag = 0;
+            bFlag = 0;
+            iFlag = 0;
+            zFlag = 0;
+            cFlag = 0;
             this.nes = nes;
             totalCpuCycle = 0;
         }
@@ -466,21 +474,24 @@ namespace NES_Emulator.NES
         /// <param name="flag">If set to <c>true</c> flag.</param>
         void Branch(bool flag)
         {
+            Debug.WriteLine(registerX + " : " + registerY + " : " + zFlag);
             if (flag)
             {
+                Debug.WriteLine("PC: " + programCounter + " PC+1: " + cpuAddress[programCounter + 1]);
                 sbyte address;
                 byte tmp = cpuAddress[programCounter + 1];
                 if ((tmp >> 7) == 1)
                 {
                     tmp ^= 0xff;
                     address = (sbyte)-(tmp + 1);
+                    Debug.WriteLine(address);
                 }
                 else
                 {
                     address = (sbyte)tmp;
                 }
-                address += (sbyte)(programCounter + 2);
-                programCounter = (byte)address;
+                programCounter = (ushort)(address + programCounter + 2);
+                Debug.WriteLine(programCounter);
             }
             else
             {
@@ -497,7 +508,7 @@ namespace NES_Emulator.NES
         /// <param name="value">結果</param>
         void FlagNandZ(byte value)
         {
-            if (value == 0) zFlag = 1;
+            zFlag = value == 0 ? (byte)1 : (byte)0;
             nFlag = (byte)(value >> 7);
         }
 
@@ -787,7 +798,7 @@ namespace NES_Emulator.NES
                 case 0x88:
                     programCounter++;
                     registerY--;
-                    FlagNandZ(registerX);
+                    FlagNandZ(registerY);
                     break;
                 case 0x49:
                     EOR(Immediate());
