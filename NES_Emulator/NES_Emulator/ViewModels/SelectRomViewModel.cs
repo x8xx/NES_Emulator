@@ -37,6 +37,8 @@ namespace NES_Emulator.ViewModels
                 Nes nes = new Nes();
                 bool flag = nes.PowerOn(TestRomBinary.helloWorld);
                 Test = flag.ToString();
+                nes.gameScreen.InitialScreen();
+                Sprite = ImageSource.FromStream(() => nes.gameScreen.ScreenMemoryStream);
                 Device.StartTimer(TimeSpan.FromMilliseconds(16), () => 
                 {
                     nes.OperatingCpu();

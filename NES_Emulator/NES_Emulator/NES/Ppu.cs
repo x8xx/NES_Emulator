@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading.Tasks;
 namespace NES_Emulator.NES
 {
     public class Ppu
@@ -103,7 +104,7 @@ namespace NES_Emulator.NES
             set
             {
                 _totalPpuCycle = value;
-                if (_totalPpuCycle >= 341)
+                if (_totalPpuCycle >= 341 && RenderLine < 240)
                 {
                     BgRenderScreen();
                     _totalPpuCycle -= 341;
@@ -117,7 +118,7 @@ namespace NES_Emulator.NES
             set
             {
                 _renderLine = value;
-                if (_renderLine > 240)
+                if (_renderLine == 240)
                 {
                     nes.gameScreen.RenderScreen(screen);
                 }
@@ -168,6 +169,7 @@ namespace NES_Emulator.NES
             spriteLine++;
             if (spriteLine > 7) spriteLine = 0;
             RenderLine++;
+            Debug.WriteLine(RenderLine);
         }
 
         int GetPalette(byte value, int order)
@@ -205,9 +207,10 @@ namespace NES_Emulator.NES
         string BinaryNumberConversion(byte originNumber)
         {
             string convertNumber = Convert.ToString(originNumber, 2);
-            if (convertNumber.Length < 8)
+            int length = convertNumber.Length;
+            if (length < 8)
             {
-                for (int i = 0;i < 8 - convertNumber.Length;i++)
+                for (int i = 0;i < 8 - length;i++)
                 {
                     convertNumber = convertNumber.Insert(0, "0");
                 }

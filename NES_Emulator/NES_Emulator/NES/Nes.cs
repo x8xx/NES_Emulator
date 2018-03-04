@@ -30,6 +30,7 @@ namespace NES_Emulator.NES
             cpu = new Cpu(this);
             ppuRegister = new PpuRegister(this);
             ppu = new Ppu(this);
+            ppu.LoadSprite();
 
             rom.SpliteRom();
             for (int i = 0;i < rom.ProgramRom.Length;i++)

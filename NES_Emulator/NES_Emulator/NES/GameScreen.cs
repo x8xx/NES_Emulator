@@ -1,5 +1,6 @@
 ﻿using System.IO;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace NES_Emulator.NES
 {
@@ -53,7 +54,7 @@ namespace NES_Emulator.NES
         {
             for (int i = headerSize;i < screen.Length;i++)
             {
-                screen[i] = 0;
+                screen[i] = 225;
             }
         }
 
@@ -63,12 +64,13 @@ namespace NES_Emulator.NES
         /// <param name="table">Table.</param>
         public void RenderScreen(byte[][] table)
         {
-            for (int i = 0;i < table.Length;i += 4)
+            for (int i = headerSize, j = 0;j < 61440;i += 4, j++)
             {
-                screen[i + headerSize] = table[i][2];
-                screen[i + headerSize + 1] = table[i][1];
-                screen[i + headerSize + 2] = table[i][0];
-                screen[i + headerSize + 3] = 255;
+                Debug.WriteLine("RS: " + i);
+                screen[i] = table[j][2];
+                screen[i + 1] = table[j][1];
+                screen[i + 2] = table[j][0];
+                screen[i + 3] = 255;
             }
         }
     }
