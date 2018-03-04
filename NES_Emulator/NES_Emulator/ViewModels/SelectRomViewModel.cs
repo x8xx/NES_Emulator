@@ -5,6 +5,7 @@ using Prism.Commands;
 using System.Windows.Input;
 using NES_Emulator.NES;
 using System.IO;
+using System.Threading.Tasks;
 using Xamarin.Forms;
 
 namespace NES_Emulator.ViewModels
@@ -37,10 +38,13 @@ namespace NES_Emulator.ViewModels
                 TestGenerateSprite sprite = new TestGenerateSprite(TestRomBinary.helloWorld);
                 sprite.GetSprite();*/
                 //MemoryStream ms = new MemoryStream(sprite.GenerateImage());
-                GameScreen gameScreen = new GameScreen();
+                /*GameScreen gameScreen = new GameScreen();
                 gameScreen.InitialScreen();
                 Sprite = ImageSource.FromStream(() => gameScreen.ScreenMemoryStream);
-                Ppu ppu = new Ppu(new Rom(TestRomBinary.helloWorld));
+                Ppu ppu = new Ppu(new Rom(TestRomBinary.helloWorld));*/
+
+
+
             });
         }
 

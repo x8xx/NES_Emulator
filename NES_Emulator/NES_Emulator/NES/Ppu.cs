@@ -71,7 +71,6 @@ namespace NES_Emulator.NES
         byte[,] oam;
 
         byte[,,] sprite; //Sprite保存用
-        Rom rom;
 
         byte[][] screen;
         public IReadOnlyList<byte[]> Screen
@@ -83,12 +82,15 @@ namespace NES_Emulator.NES
         int renderLine; //次に描画するlineを保持
         int spriteLine; //描画中スプライトをどの列まで描画したかを保持
 
-        public Ppu(Rom rom)
+        Nes nes;
+        public Ppu(Nes nes)
         {
             ppuAddress = new byte[0x4000];
-            this.rom = rom;
-            sprite = new byte[rom.CharacterRom.Length / 16, 8, 8];
+            this.nes = nes;
+
+            sprite = new byte[nes.rom.CharacterRom.Length / 16, 8, 8];
             screen = new byte[61440][];
+
             TotalPpuCycle = 0;
             renderLine = 0;
             spriteLine = 0;

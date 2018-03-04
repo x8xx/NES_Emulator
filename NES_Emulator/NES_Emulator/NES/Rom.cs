@@ -3,62 +3,41 @@ namespace NES_Emulator.NES
 {
     public class Rom
     {
-        byte[] rom;
-        byte[] _header;
-        byte[] _programRom;
-        byte[] _characterRom;
+        byte[] romBinary; //Romファイル
 
-        public byte[] Header
+        public byte[] Header { get; private set; }
+        public byte[] ProgramRom { get; private set; }
+        public byte[] CharacterRom { get; private set; }
+
+        public Rom(byte[] romBinary)
         {
-            get { return _header; }
-            private set { _header = value; }
-        }
-
-        public byte[] ProgramRom
-        {
-            get { return _programRom; }
-            private set { _programRom = value; }
-        }
-
-        public byte[] CharacterRom
-        {
-            get { return _characterRom; }
-            private set { _characterRom = value; }
-        }
-
-
-        public Rom(byte[] rom)
-        {
-            this.rom = rom;
+            this.romBinary = romBinary;
             Header = new byte[0x10];
-            ProgramRom = new byte[rom[4] * 0x4000];
-            CharacterRom = new byte[rom[5] * 0x2000];
-            SpliteRom();
+            ProgramRom = new byte[romBinary[4] * 0x4000];
+            CharacterRom = new byte[romBinary[5] * 0x2000];
         }
 
-        public void RomLoad()
-        {
-
-        }
-
+        /// <summary>
+        /// Romファイルをヘッダー, プログラムRom, キャラクターRomに分割
+        /// </summary>
         public void SpliteRom()
         {
             int hCount = 0, pCount = 0, cCount = 0;
-            for (int i = 0; i < rom.GetLength(0); i++)
+            for (int i = 0; i < romBinary.GetLength(0); i++)
             {
                 if (i < 0x10)
                 {
-                    Header[hCount] = rom[i];
+                    Header[hCount] = romBinary[i];
                     hCount++;
                 }
                 else if (pCount < ProgramRom.Length)
                 {
-                    ProgramRom[pCount] = rom[i];
+                    ProgramRom[pCount] = romBinary[i];
                     pCount++;
                 }
                 else if (cCount < CharacterRom.Length)
                 {
-                    CharacterRom[cCount] = rom[i];
+                    CharacterRom[cCount] = romBinary[i];
                     cCount++;
                 }
             }
@@ -67,7 +46,7 @@ namespace NES_Emulator.NES
         /// <summary>
         /// NESのRomか判別
         /// </summary>
-        /// <returns><c>true</c>, if judgment NESR om was ised, <c>false</c> otherwise.</returns>
+        /// <returns><c>true</c>, NESファイル, <c>false</c> 違う</returns>
         public bool IsJudgmentNESRom()
         {
             if (Header[0] == 0x4E && Header[1] == 0x45 && Header[2] == 0x53 && Header[3] == 0x1A)

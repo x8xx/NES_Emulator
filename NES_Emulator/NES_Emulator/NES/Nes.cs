@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Threading.Tasks;
+
 namespace NES_Emulator.NES
 {
     public class Nes
@@ -6,12 +8,27 @@ namespace NES_Emulator.NES
         public Cpu cpu { get; private set; }
         public PpuRegister ppuRegister { get; private set; }
         public Ppu ppu { get; private set; }
+        public Rom rom { get; private set; }
 
-        public Nes(Cpu cpu, PpuRegister ppuRegister, Ppu ppu)
+        public Nes()
         {
-            this.cpu = cpu;
-            this.ppuRegister = ppuRegister;
-            this.ppu = ppu;
+            
+        }
+
+        /// <summary>
+        /// 電源ON
+        /// 各クラスのインスタンス生成
+        /// </summary>
+        /// <returns><c>true</c>, 起動成功 <c>false</c> 起動失敗</returns>
+        /// <param name="romBinary">Rom binary.</param>
+        public bool PowerOn(byte[] romBinary)
+        {
+            rom = new Rom(romBinary);
+            if (!rom.IsJudgmentNESRom()) return false;
+            cpu = new Cpu(this);
+            ppuRegister = new PpuRegister(this);
+            ppu = new Ppu(this);
+            return true;
         }
 
         //CPUサイクル数
