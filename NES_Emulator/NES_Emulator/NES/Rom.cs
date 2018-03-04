@@ -47,9 +47,9 @@ namespace NES_Emulator.NES
         /// NESのRomか判別
         /// </summary>
         /// <returns><c>true</c>, NESファイル, <c>false</c> 違う</returns>
-        public bool IsJudgmentNESRom()
+        public bool IsJudgmentNesRom()
         {
-            if (Header[0] == 0x4E && Header[1] == 0x45 && Header[2] == 0x53 && Header[3] == 0x1A)
+            if (romBinary[0] == 0x4E && romBinary[1] == 0x45 && romBinary[2] == 0x53 && romBinary[3] == 0x1A)
             {
                 return true;
             }

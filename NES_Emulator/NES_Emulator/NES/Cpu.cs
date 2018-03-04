@@ -37,6 +37,7 @@ namespace NES_Emulator.NES
         public Cpu(Nes nes)
         {
             cpuAddress = new byte[0x10000];
+            programCounter = 0x8000;
             this.nes = nes;
             totalCpuCycle = 0;
         }
@@ -196,26 +197,12 @@ namespace NES_Emulator.NES
         /// Z: ロードコピーした値が0であるか
         /// LDA, LDX, LDY
         /// </summary>
-        /// <param name="cycle">サイクル数</param>
         /// <param name="address">実効アドレス</param>
         /// <param name="register">レジスタ</param>
         void LoadToRegister(ushort address, ref byte register)
         {
             register = cpuAddress[address];
             FlagNandZ(register);
-        }
-
-
-        /// <summary>
-        /// レジスタからメモリにストア
-        /// STA, STX, STY
-        /// </summary>
-        /// <param name="cycle">サイクル数</param>
-        /// <param name="address">実効アドレス</param>
-        /// <param name="register">レジスタ</param>
-        void StoreToMemory(ushort address, ref byte register)
-        {
-            cpuAddress[address] = register;
         }
 
         /// <summary>
@@ -322,7 +309,6 @@ namespace NES_Emulator.NES
         /// N: 演算結果の最上位ビット
         /// Z: 演算結果が0であるか
         /// </summary>
-        /// <param name="cycle">サイクル数</param>
         /// <param name="address">実効アドレス</param>
         void DEC(ushort address)
         {
@@ -348,7 +334,6 @@ namespace NES_Emulator.NES
         /// N: 演算結果の最上位ビット
         /// Z: 演算結果が0であるか
         /// </summary>
-        /// <param name="cycle">サイクル数</param>
         /// <param name="address">実効アドレス</param>
         void INC(ushort address)
         {
@@ -430,7 +415,7 @@ namespace NES_Emulator.NES
         void Push(byte value)
         {
             programCounter++;
-            cpuAddress[0x0100 + registerS] = value;
+            WriteMemory((ushort)(0x100 + registerS), value);
             registerS--;
         }
 
@@ -451,7 +436,6 @@ namespace NES_Emulator.NES
         /// <summary>
         /// スタックからPにポップアップ
         /// </summary>
-        /// <param name="cycle">サイクル数</param>
         void PLP()
         {
             programCounter++;
@@ -462,7 +446,6 @@ namespace NES_Emulator.NES
         /// <summary>
         /// アドレスへジャンプする
         /// </summary>
-        /// <param name="cycle">サイクル数</param>
         /// <param name="address">実効アドレス</param>
         void JMP(ushort address)
         {
@@ -546,8 +529,9 @@ namespace NES_Emulator.NES
         /// 命令を実効
         /// </summary>
         /// <param name="opcode">コード</param>
-        public void Execute(byte opcode)
+        public void Execute()
         {
+            byte opcode = cpuAddress[programCounter];
             switch (opcode)
             {
                 case 0xA9:
@@ -605,43 +589,43 @@ namespace NES_Emulator.NES
                     LoadToRegister(AbsoluteX(), ref registerY);
                     break;
                 case 0x85:
-                    StoreToMemory(Zeropage(), ref registerA);
+                    WriteMemory(Zeropage(), registerA);
                     break;
                 case 0x95:
-                    StoreToMemory(ZeropageX(), ref registerA);
+                    WriteMemory(ZeropageX(), registerA);
                     break;
                 case 0x8D:
-                    StoreToMemory(Absolute(), ref registerA);
+                    WriteMemory(Absolute(), registerA);
                     break;
                 case 0x9D:
-                    StoreToMemory(AbsoluteX(), ref registerA);
+                    WriteMemory(AbsoluteX(), registerA);
                     break;
                 case 0x99:
-                    StoreToMemory(AbsoluteY(), ref registerA);
+                    WriteMemory(AbsoluteY(), registerA);
                     break;
                 case 0x81:
-                    StoreToMemory(IndirectX(), ref registerA);
+                    WriteMemory(IndirectX(), registerA);
                     break;
                 case 0x91:
-                    StoreToMemory(IndirectY(), ref registerA);
+                    WriteMemory(IndirectY(), registerA);
                     break;
                 case 0x86:
-                    StoreToMemory(Zeropage(), ref registerX);
+                    WriteMemory(Zeropage(), registerX);
                     break;
                 case 0x96:
-                    StoreToMemory(ZeropageY(), ref registerX);
+                    WriteMemory(ZeropageY(), registerX);
                     break;
                 case 0x8E:
-                    StoreToMemory(Absolute(), ref registerX);
+                    WriteMemory(Absolute(), registerX);
                     break;
                 case 0x84:
-                    StoreToMemory(Zeropage(), ref registerY);
+                    WriteMemory(Zeropage(), registerY);
                     break;
                 case 0x94:
-                    StoreToMemory(ZeropageX(), ref registerY);
+                    WriteMemory(ZeropageX(), registerY);
                     break;
                 case 0x8C:
-                    StoreToMemory(Absolute(), ref registerY);
+                    WriteMemory(Absolute(), registerY);
                     break;
                 case 0xAA:
                     CopyRegister(ref registerA, ref registerX);
@@ -789,7 +773,6 @@ namespace NES_Emulator.NES
                  * Xをデクリメント
                  * N: 演算結果の最上位ビット
                  * Z: 演算結果が0であるか
-                 * サイクル数2
                  */
                 case 0xCA:
                     programCounter++;
@@ -800,7 +783,6 @@ namespace NES_Emulator.NES
                  * Yをデクリメント
                  * N: 演算結果の最上位ビット
                  * Z: 演算結果が0であるか
-                 * サイクル数2
                  */
                 case 0x88:
                     programCounter++;
@@ -847,7 +829,6 @@ namespace NES_Emulator.NES
                  * Xをインクリメント
                  * N: 演算結果の最上位ビット
                  * Z: 演算結果が0であるか
-                 * サイクル数2
                  */
                 case 0xE8:
                     programCounter++;
@@ -858,7 +839,6 @@ namespace NES_Emulator.NES
                  * Yをインクリメント
                  * N: 演算結果の最上位ビット
                  * Z: 演算結果が0であるか
-                 * サイクル数2
                  */
                 case 0xC8:
                     programCounter++;

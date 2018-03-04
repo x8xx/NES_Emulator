@@ -171,8 +171,8 @@ namespace NES_Emulator.NES
             {
                 for (int j = i * 16; j < i * 16 + 8; j++)
                 {
-                    string highOrder = BinaryNumberConversion(rom.CharacterRom[j + 8]);
-                    string lowOrder = BinaryNumberConversion(rom.CharacterRom[j]);
+                    string highOrder = BinaryNumberConversion(nes.rom.CharacterRom[j + 8]);
+                    string lowOrder = BinaryNumberConversion(nes.rom.CharacterRom[j]);
                     for (int l = 0;l < 8; l++)
                     {
                         sprite[i, count, l] = (byte)(int.Parse(highOrder[l].ToString()) * 2 + int.Parse(lowOrder[l].ToString()));

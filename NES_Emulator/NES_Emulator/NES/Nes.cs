@@ -24,11 +24,26 @@ namespace NES_Emulator.NES
         public bool PowerOn(byte[] romBinary)
         {
             rom = new Rom(romBinary);
-            if (!rom.IsJudgmentNESRom()) return false;
+            if (!rom.IsJudgmentNesRom()) return false;
+
             cpu = new Cpu(this);
             ppuRegister = new PpuRegister(this);
             ppu = new Ppu(this);
+
+            rom.SpliteRom();
+            for (int i = 0;i < rom.ProgramRom.Length;i++)
+            {
+                cpu.WriteMemory((ushort)(0x8000 + i), rom.ProgramRom[i]);
+            }
             return true;
+        }
+
+        /// <summary>
+        /// CPUの命令を実効
+        /// </summary>
+        public void OperatingCpu()
+        {
+            cpu.Execute();
         }
 
         //CPUサイクル数
