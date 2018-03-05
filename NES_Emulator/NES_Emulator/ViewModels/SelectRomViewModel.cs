@@ -7,6 +7,7 @@ using NES_Emulator.NES;
 using System.IO;
 using System.Threading.Tasks;
 using Xamarin.Forms;
+using System.Diagnostics;
 
 namespace NES_Emulator.ViewModels
 {
@@ -41,8 +42,9 @@ namespace NES_Emulator.ViewModels
                 Sprite = ImageSource.FromStream(() => nes.gameScreen.ScreenMemoryStream);
                 Device.StartTimer(TimeSpan.FromMilliseconds(16), () => 
                 {
+                    nes.gameScreen.notificationScreenUpdate = false;
                     nes.OperatingCpu();
-                    return true;
+                    return false;
                 });
             });
         }

@@ -47,7 +47,10 @@ namespace NES_Emulator.NES
         /// </summary>
         public void OperatingCpu()
         {
-            cpu.Execute();
+            while(!gameScreen.notificationScreenUpdate)
+            {
+                cpu.Execute();
+            }
         }
 
         //CPUサイクル数

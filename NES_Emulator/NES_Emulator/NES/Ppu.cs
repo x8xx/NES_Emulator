@@ -169,7 +169,6 @@ namespace NES_Emulator.NES
             spriteLine++;
             if (spriteLine > 7) spriteLine = 0;
             RenderLine++;
-            Debug.WriteLine(RenderLine);
         }
 
         int GetPalette(byte value, int order)

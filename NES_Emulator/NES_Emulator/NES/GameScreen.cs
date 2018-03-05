@@ -9,6 +9,7 @@ namespace NES_Emulator.NES
         const int headerSize = 54;
         byte[] screen;
         public MemoryStream ScreenMemoryStream { get; private set; }
+        public bool notificationScreenUpdate { get; set; }
 
         /// <summary>
         /// BMPを作成
@@ -54,7 +55,7 @@ namespace NES_Emulator.NES
         {
             for (int i = headerSize;i < screen.Length;i++)
             {
-                screen[i] = 225;
+                screen[i] = 0;
             }
         }
 
@@ -66,12 +67,13 @@ namespace NES_Emulator.NES
         {
             for (int i = headerSize, j = 0;j < 61440;i += 4, j++)
             {
-                Debug.WriteLine("RS: " + i);
+                //Debug.WriteLine("RS: " + i);
                 screen[i] = table[j][2];
                 screen[i + 1] = table[j][1];
                 screen[i + 2] = table[j][0];
                 screen[i + 3] = 255;
             }
+            notificationScreenUpdate = true;
         }
     }
 }
