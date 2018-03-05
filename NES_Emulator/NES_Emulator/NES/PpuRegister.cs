@@ -10,7 +10,7 @@ namespace NES_Emulator.NES
         byte oamAddr;  //0x2003 OAMADDR W スプライトメモリデータ 書き込むスプライト領域のアドレス
         byte oamData; //0x2004 OAMDATA RW デシマルモード スプライト領域のデータ
         byte ppuScroll; //0x2005 PPUSCROLL W 背景スクロールオフセット 背景スクロール値
-        byte ppuAddr; //0x2006 PPUADDR W PPUメモリアドレス 書き込むメモリ領域のアドレス
+        ushort ppuAddr; //0x2006 PPUADDR W PPUメモリアドレス 書き込むメモリ領域のアドレス
         byte ppuData; //0x2007 PPUDATA RW PPUメモリデータ PPUメモリ領域のデータ
 
         int ppuAddrWriteCount; //0x2006のWrite回数を記録
@@ -43,17 +43,19 @@ namespace NES_Emulator.NES
                     switch (ppuAddrWriteCount)
                     {
                         case 0:
-                            ppuAddr = (byte)(value * 0x100);
+                            ppuAddr = (ushort)(value * 0x100);
+                            Debug.WriteLine("0x2006上: " + ppuAddr);
                             ppuAddrWriteCount++;
                             break;
                         case 1:
                             ppuAddr += value;
+                            Debug.WriteLine("0x2006完" + ppuAddr);
                             ppuAddrWriteCount = 0;
                             break;
                     }
                     break;
                 case 0x2007:
-                    Debug.WriteLine("0x2007: " + value);
+                    Debug.WriteLine("0x2006:" + Convert.ToString(ppuAddr, 16) + ", " + "0x2007: " + value);
                     ppuData = value;
                     nes.ppu.WriteMemory(ppuAddr, value);
                     ppuAddr += ppuAddressInc;
