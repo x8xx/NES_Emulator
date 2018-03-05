@@ -82,7 +82,6 @@ namespace NES_Emulator.NES
 
         int _totalPpuCycle; //PPUの合計サイクル数
         int _renderLine; //次に描画するlineを保持
-        int spriteLine; //描画中スプライトをどの列まで描画したかを保持
 
         Nes nes;
         public Ppu(Nes nes)
@@ -95,7 +94,6 @@ namespace NES_Emulator.NES
 
             TotalPpuCycle = 0;
             RenderLine = 0;
-            spriteLine = 0;
         }
 
         public int TotalPpuCycle
@@ -118,7 +116,6 @@ namespace NES_Emulator.NES
             set
             {
                 _renderLine = value;
-                //Debug.WriteLine("0x3F00:    " + ppuAddress[0x3F00]);
                 if (_renderLine == 240)
                 {
                     nes.gameScreen.RenderScreen(screen);
@@ -133,19 +130,19 @@ namespace NES_Emulator.NES
 
         void BgRenderScreen()
         {
-            int nameTableNumber = 0x2000;
+            int nameTableNumber = 0x2000 + (RenderLine / 8) * 32;
             int attrTableNumber = 0x23C0;
             int attrTablePaletteNumber = 0;
             int column = 0;
+            int spriteLine = RenderLine % 8;
             int unitRenderLine = RenderLine - (32 * (RenderLine / 32));
-            if ((RenderLine % 8) == 0) nameTableNumber += (RenderLine / 8) * 8;
 
             for (int i = RenderLine * 256;i < (RenderLine + 1) * 256;i++)
             {
                 int unitColumn = column - (32 * (column / 32));
 
-                if ((i % 8) == 0) nameTableNumber++;
-                if ((i % 32) == 0) attrTableNumber++;
+                if ((column % 8) == 0 && column != 0) nameTableNumber++;
+                if ((i % 32) == 0 && i != RenderLine * 256) attrTableNumber++;
 
                 if (unitRenderLine < 16 && unitColumn < 16)
                 {
@@ -167,8 +164,6 @@ namespace NES_Emulator.NES
                 screen[i] = Nes.paletteColors[ppuAddress[0x3F00 + 4 * GetPalette(ppuAddress[attrTableNumber], attrTablePaletteNumber) + sprite[ppuAddress[nameTableNumber], spriteLine, column - (8 * (column / 8))]]];
                 column++;
             }
-            spriteLine++;
-            if (spriteLine > 7) spriteLine = 0;
             RenderLine++;
         }
 
@@ -177,6 +172,7 @@ namespace NES_Emulator.NES
             string binaryNumber = BinaryNumberConversion(value);
             return int.Parse(binaryNumber[order * 2 + 1].ToString()) + int.Parse(binaryNumber[order * 2].ToString());
         }
+
         /// <summary>
         /// スプライトを読み込み保存
         /// </summary>
