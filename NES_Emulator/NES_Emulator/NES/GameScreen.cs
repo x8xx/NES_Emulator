@@ -55,7 +55,7 @@ namespace NES_Emulator.NES
         {
             for (int i = headerSize;i < screen.Length;i++)
             {
-                screen[i] = 0;
+                screen[i] = 225;
             }
         }
 

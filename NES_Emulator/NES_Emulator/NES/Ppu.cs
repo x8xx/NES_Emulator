@@ -118,6 +118,7 @@ namespace NES_Emulator.NES
             set
             {
                 _renderLine = value;
+                //Debug.WriteLine("0x3F00:    " + ppuAddress[0x3F00]);
                 if (_renderLine == 240)
                 {
                     nes.gameScreen.RenderScreen(screen);
