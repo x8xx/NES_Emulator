@@ -13,4 +13,7 @@
     <Folder Include="NES\" />
     <Folder Include="FileManage\" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="NES\PpuRegister.cs" />
+  </ItemGroup>
 </Project>

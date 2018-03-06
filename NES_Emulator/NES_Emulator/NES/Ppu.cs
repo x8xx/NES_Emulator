@@ -6,7 +6,8 @@ namespace NES_Emulator.NES
 {
     public class Ppu
     {
-        /*PPUメモリマップ
+        /*
+         * PPUメモリマップ
          * アドレス        サイズ
          * 0x0000～0x0FFF 0x1000 パターンテーブル0
          * 0x1000～0x1FFF 0x1000 パターンテーブル1
@@ -41,7 +42,8 @@ namespace NES_Emulator.NES
          */
         byte[] ppuAddress;
 
-        /* OAM (Object Attribute Memory)
+        /* 
+         * OAM (Object Attribute Memory)
          *  スプライト管理メモリ
          *  Size : 256byte
          *  1スプライト4byteの構造体 64個のスプライトを保持
@@ -73,12 +75,16 @@ namespace NES_Emulator.NES
         byte[,] oam;
 
         byte[,,] sprite; //Sprite保存用
+        byte[][] screen; //スクリーン
 
-        byte[][] screen;
-        public IReadOnlyList<byte[]> Screen
-        {
-            get { return screen; }
-        }
+        byte ppuStatus; //0x2002 PPUSTATUS R PPUステータス PPUステータス
+        byte oamAddr;  //0x2003 OAMADDR W スプライトメモリデータ 書き込むスプライト領域のアドレス
+        byte oamData; //0x2004 OAMDATA RW デシマルモード スプライト領域のデータ
+        byte ppuScroll; //0x2005 PPUSCROLL W 背景スクロールオフセット 背景スクロール値
+        ushort ppuAddr; //0x2006 PPUADDR W PPUメモリアドレス 書き込むメモリ領域のアドレス
+        byte ppuData; //0x2007 PPUDATA RW PPUメモリデータ PPUメモリ領域のデータ
+        int ppuAddrWriteCount; //0x2006のWrite回数を記録
+        byte ppuAddressInc; //0x2006のインクリメントする大きさ
 
         int _totalPpuCycle; //PPUの合計サイクル数
         int _renderLine; //次に描画するlineを保持
@@ -92,10 +98,95 @@ namespace NES_Emulator.NES
             sprite = new byte[nes.rom.CharacterRom.Length / 16, 8, 8];
             screen = new byte[61440][];
 
+            ppuAddrWriteCount = 0;
+            ppuAddressInc = 0x01;
+
             TotalPpuCycle = 0;
             RenderLine = 0;
         }
 
+
+        public void WritePpuRegister(ushort address, byte value)
+        {
+            switch (address)
+            {
+                /*
+                 * 0x2000 PPUCTRL W コントロールレジスタ1 割り込みなどPPUの設定
+                 * bit 76543210
+                 *     VPHBSINN
+                 * 
+                 * V : VBLANK 開始時に NMI 割り込みを発生 (0:off, 1:on)
+                 * P : P: PPU マスター/スレーブ
+                 * H : スプライトサイズ (0:8*8, 1:8*16)
+                 * B : BG パターンテーブル (0:$0000, 1:$1000)
+                 * S : スプライトパターンテーブル (0:$0000, 1:$1000)
+                 * I : PPU アドレスインクリメント (0:+1, 1:+32) - VRAM 上で +1 は横方向、+32 は縦方向
+                 * N : ネームテーブル (0:$2000, 1:$2400, 2:$2800, 3:$2C00)
+                 * 
+                 * 0x2001 PPUMASK W コントロールレジスタ2 背景イネーブルなどPPUの設定
+                 * bit 76543210
+                 *     BGRsbMmG
+                 * 
+                 * B : 色強調(青)
+                 * G : 色強調(緑)
+                 * R : 色強調(赤)
+                 * s : スプライト描画(0:off, 1:on)
+                 * b : BG 描画 (0:off, 1:on)
+                 * M : 画面左端 8px でスプライトクリッピング (0:有効, 1:無効)
+                 * m : 画面左端 8px で BG クリッピング (0:有効, 1:無効)
+                 * G : 0:カラー, 1:モノクロ
+                 */
+                case 0x2000:
+                case 0x2001:
+                    WriteMemory(address, value);
+                    break;
+                case 0x2003:
+                    break;
+                case 0x2004:
+                    break;
+                case 0x2005:
+                    break;
+                case 0x2006:
+                    switch (ppuAddrWriteCount)
+                    {
+                        case 0:
+                            ppuAddr = (ushort)(value * 0x100);
+                            ppuAddrWriteCount++;
+                            break;
+                        case 1:
+                            ppuAddr += value;
+                            ppuAddrWriteCount = 0;
+                            break;
+                    }
+                    break;
+                case 0x2007:
+                    ppuData = value;
+                    WriteMemory(ppuAddr, value);
+                    ppuAddr += ppuAddressInc;
+                    break;
+            }
+        }
+
+
+        public void ReadPpuRegister(ushort address)
+        {
+            switch (address)
+            {
+                case 0x2002:
+                    break;
+                case 0x2004:
+                    break;
+                case 0x2007:
+                    break;
+            }
+        }
+
+
+        /// <summary>
+        /// PPUの合計サイクル数を保持
+        /// サイクル数が341以上になったとき1ライン描画する
+        /// </summary>
+        /// <value>The total ppu cycle.</value>
         public int TotalPpuCycle
         {
             get { return _totalPpuCycle; }
@@ -110,6 +201,12 @@ namespace NES_Emulator.NES
             }
         }
 
+
+        /// <summary>
+        /// 次に描画するラインを保存する
+        /// 240ライン描画できたら画像化する
+        /// </summary>
+        /// <value>The render line.</value>
         int RenderLine
         {
             get { return _renderLine; }
@@ -119,22 +216,33 @@ namespace NES_Emulator.NES
                 if (_renderLine == 240)
                 {
                     nes.gameScreen.RenderScreen(screen);
+                    _renderLine = 0;
                 }
             }
         }
 
+
+        /// <summary>
+        /// PPUメモリに書き込み
+        /// </summary>
+        /// <param name="address">アドレス</param>
+        /// <param name="value">値</param>
         public void WriteMemory(ushort address, byte value)
         {
             ppuAddress[address] = value;
         }
 
+
+        /// <summary>
+        /// BGスクリーンを1ライン描画
+        /// </summary>
         void BgRenderScreen()
         {
-            int nameTableNumber = 0x2000 + (RenderLine / 8) * 32;
-            int attrTableNumber = 0x23C0;
-            int attrTablePaletteNumber = 0;
-            int column = 0;
-            int spriteLine = RenderLine % 8;
+            int nameTableNumber = 0x2000 + (RenderLine / 8) * 32; //読み込むネームテーブルのアドレス
+            int attrTableNumber = 0x23C0; //読み込む属性テーブルのアドレス
+            int attrTablePaletteNumber = 0; //パレット内の読み込む色の番号
+            int column = 0; //現在の行
+            int spriteLine = RenderLine % 8; //今読み込んでるラインのスプライトの列
             int unitRenderLine = RenderLine - (32 * (RenderLine / 32));
 
             for (int i = RenderLine * 256;i < (RenderLine + 1) * 256;i++)
@@ -161,17 +269,29 @@ namespace NES_Emulator.NES
                     attrTablePaletteNumber = 3;
                 }
 
-                screen[i] = Nes.paletteColors[ppuAddress[0x3F00 + 4 * GetPalette(ppuAddress[attrTableNumber], attrTablePaletteNumber) + sprite[ppuAddress[nameTableNumber], spriteLine, column - (8 * (column / 8))]]];
+                screen[i] = Nes.paletteColors[ppuAddress[0x3F00 //パレットに保存してる値がpaletteColorsの添字
+                                                         + 4 * GetPalette(ppuAddress[attrTableNumber], attrTablePaletteNumber) 
+                                                         + sprite[ppuAddress[nameTableNumber], spriteLine, column - (8 * (column / 8))]]];
                 column++;
             }
             RenderLine++;
         }
 
+
+        /// <summary>
+        /// 4つあるパレットの内どのパレットを使うか決める
+        /// bit 76543210
+        /// 位置  3 2 1 0
+        /// </summary>
+        /// <returns>パレット番号</returns>
+        /// <param name="value">属性テーブルの値</param>
+        /// <param name="order">属性テーブルのどの位置の値か</param>
         int GetPalette(byte value, int order)
         {
             string binaryNumber = BinaryNumberConversion(value);
             return int.Parse(binaryNumber[order * 2 + 1].ToString()) + int.Parse(binaryNumber[order * 2].ToString());
         }
+
 
         /// <summary>
         /// スプライトを読み込み保存
@@ -195,8 +315,9 @@ namespace NES_Emulator.NES
             }
         }
 
+
         /// <summary>
-        /// 8bit変換
+        /// 8bit2進数の文字列に変換
         /// </summary>
         /// <returns>8bit</returns>
         /// <param name="originNumber">元値</param>

@@ -52,7 +52,7 @@ namespace NES_Emulator.NES
 
         public void WriteMemory(ushort address, byte value)
         {
-            if (address >= 0x2000 && address <= 0x2007) nes.ppuRegister.WritePpuRegister(address, value);
+            if (address >= 0x2000 && address <= 0x2007) nes.ppu.WritePpuRegister(address, value);
             cpuAddress[address] = value;
         }
 
@@ -474,24 +474,20 @@ namespace NES_Emulator.NES
         /// <param name="flag">If set to <c>true</c> flag.</param>
         void Branch(bool flag)
         {
-            Debug.WriteLine(registerX + " : " + registerY + " : " + zFlag);
             if (flag)
             {
-                Debug.WriteLine("PC: " + programCounter + " PC+1: " + cpuAddress[programCounter + 1]);
                 sbyte address;
                 byte tmp = cpuAddress[programCounter + 1];
                 if ((tmp >> 7) == 1)
                 {
                     tmp ^= 0xff;
                     address = (sbyte)-(tmp + 1);
-                    Debug.WriteLine(address);
                 }
                 else
                 {
                     address = (sbyte)tmp;
                 }
                 programCounter = (ushort)(address + programCounter + 2);
-                Debug.WriteLine(programCounter);
             }
             else
             {
