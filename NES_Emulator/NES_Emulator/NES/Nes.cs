@@ -6,7 +6,6 @@ namespace NES_Emulator.NES
     public class Nes
     {
         public Cpu cpu { get; private set; }
-        public PpuRegister ppuRegister { get; private set; }
         public Ppu ppu { get; private set; }
         public Rom rom { get; private set; }
         public GameScreen gameScreen { get; private set; }
@@ -28,7 +27,6 @@ namespace NES_Emulator.NES
             if (!rom.IsJudgmentNesRom()) return false;
 
             cpu = new Cpu(this);
-            ppuRegister = new PpuRegister(this);
             ppu = new Ppu(this);
 
             rom.SpliteRom();
