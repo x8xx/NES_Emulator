@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Diagnostics;
+using System;
 
 namespace NES_Emulator.NES
 {
@@ -13,12 +14,12 @@ namespace NES_Emulator.NES
         ushort programCounter; //16bit
 
         //フラグ
-        byte nFlag; //演算結果のbit7の値
-        byte vFlag; //演算結果がオーバーフローを起こしたらセット
-        byte bFlag; //BRK発生時にセット, IRQ発生時にクリア
-        byte iFlag; //0:IRQ許可, 1:IRQ禁止
-        byte zFlag; //演算結果が0のときにセット
-        byte cFlag; //キャリー発生時にセット
+        bool nFlag; //演算結果のbit7の値
+        bool vFlag; //演算結果がオーバーフローを起こしたらセット
+        bool bFlag; //BRK発生時にセット, IRQ発生時にクリア
+        bool iFlag; //0:IRQ許可, 1:IRQ禁止
+        bool zFlag; //演算結果が0のときにセット
+        bool cFlag; //キャリー発生時にセット
 
         /* CPUメモリマップ
          * アドレス        サイズ
@@ -40,25 +41,25 @@ namespace NES_Emulator.NES
             cpuAddress = new byte[0x10000];
             programCounter = 0x8000; //PC初期化
             //フラグ初期化
-            nFlag = 0;
-            vFlag = 0;
-            bFlag = 0;
-            iFlag = 0;
-            zFlag = 0;
-            cFlag = 0;
+            nFlag = false;
+            vFlag = false;
+            bFlag = false;
+            iFlag = false;
+            zFlag = false;
+            cFlag = false;
             this.nes = nes;
             totalCpuCycle = 0;
         }
 
         public void WriteMemory(ushort address, byte value)
         {
-            if (address >= 0x2000 && address <= 0x2007) nes.ppu.WritePpuRegister(address, value);
+            if ((address >= 0x2000 && address <= 0x2007) || address == 0x4014) nes.ppu.WritePpuRegister(address, value);
             cpuAddress[address] = value;
         }
 
         public byte ReadMemory(ushort address)
         {
-            return 0x00;
+            return cpuAddress[address];
         }
 
         public void CycleInc(int cycle)
@@ -73,7 +74,12 @@ namespace NES_Emulator.NES
         /// <returns>P</returns>
         byte GetRegisterP()
         {
-            return (byte)(nFlag * 0x80 + vFlag * 0x40 + 0x20 + bFlag * 0x10 + iFlag * 0x04 + zFlag * 0x02 + cFlag);
+            return (byte)(Convert.ToInt32(nFlag) * 0x80 + 
+                          Convert.ToInt32(vFlag) * 0x40 + 0x20 +
+                          Convert.ToInt32(bFlag) * 0x10 + 
+                          Convert.ToInt32(iFlag) * 0x04 + 
+                          Convert.ToInt32(zFlag) * 0x02 + 
+                          Convert.ToInt32(cFlag));
         }
 
         /// <summary>
@@ -82,12 +88,12 @@ namespace NES_Emulator.NES
         /// <param name="value">P</param>
         void SetRegisterP(byte value)
         {
-            nFlag = (byte)(value >> 7);
-            vFlag = (byte)((value << 1) >> 7);
-            bFlag = (byte)((value << 3) >> 7);
-            iFlag = (byte)((value << 5) >> 7);
-            zFlag = (byte)((value << 6) >> 7);
-            cFlag = (byte)((value << 7) >> 7);
+            nFlag = (value >> 7) == 1;
+            vFlag = ((value << 1) >> 7) == 1;
+            bFlag = ((value << 3) >> 7) == 1;
+            iFlag = ((value << 5) >> 7) == 1;
+            zFlag = ((value << 6) >> 7) == 1;
+            cFlag = ((value << 7) >> 7) == 1;
         }
 
         /*------------------------------------------------------------
@@ -215,7 +221,6 @@ namespace NES_Emulator.NES
 
         /// <summary>
         /// XをSへコピー
-        /// サイクル数2
         /// </summary>
         void TXS()
         {
@@ -238,11 +243,22 @@ namespace NES_Emulator.NES
             FlagNandZ(copyTarget);
         }
 
-
+        /// <summary>
+        /// 加算
+        /// A = A + M + C
+        /// N: 結果の最上位ビット
+        /// V: 符号付きオーバーフローが発生したか
+        /// Z: 結果が0であるか
+        /// C: 繰り上がりが発生したら 1, さもなくば 0
+        /// </summary>
+        /// <param name="address">実効アドレス</param>
         void ADC(ushort address)
         {
-            registerA += (byte)(cpuAddress[address] + cFlag);
+            int sum = registerA + cpuAddress[address] + Convert.ToInt32(cFlag);
+            registerA = (byte)sum;
             FlagNandZ(registerA);
+            vFlag = ((((registerA ^ cpuAddress[address]) & 0x80) == 0) && (((registerA ^ sum) & 0x80)) != 0);
+            cFlag = sum > 0xff;
         }
 
 
@@ -269,7 +285,7 @@ namespace NES_Emulator.NES
         /// <param name="address">実効アドレス</param>
         void ASL(ref byte value)
         {
-            cFlag = (byte)(value >> 7);
+            cFlag = (value >> 7) == 1;
             value <<= 1;
             FlagNandZ(value);
         }
@@ -284,9 +300,9 @@ namespace NES_Emulator.NES
         /// <param name="address">実効アドレス</param>
         void BIT(ushort address)
         {
-            nFlag = (byte)(cpuAddress[address] >> 7);
-            vFlag = (byte)((cpuAddress[address] << 1) >> 7);
-            if ((registerA & cpuAddress[address]) == 0) zFlag = 1;
+            nFlag = (cpuAddress[address] >> 7) == 1;
+            vFlag = ((cpuAddress[address] << 1) >> 7) == 1;
+            zFlag = (registerA & cpuAddress[address]) == 0;
         }
 
         /// <summary>
@@ -302,14 +318,7 @@ namespace NES_Emulator.NES
         {
             byte tmp = (byte)(register - cpuAddress[address]);
             FlagNandZ(tmp);
-            if (tmp >= 0)
-            {
-                cFlag = 1;
-            }
-            else
-            {
-                cFlag = 0;
-            }
+            cFlag = tmp >= 0;
         }
 
         /// <summary>
@@ -359,7 +368,7 @@ namespace NES_Emulator.NES
         /// <param name="address">実効アドレス</param>
         void LSR(ref byte value)
         {
-            cFlag = (byte)((value << 7) >> 7);
+            cFlag = ((value << 7) >> 7) == 1;
             value >>= 1;
             FlagNandZ(value);
         }
@@ -388,8 +397,8 @@ namespace NES_Emulator.NES
         void ROL(ref byte value)
         {
             byte tmp = (byte)(value >> 7);
-            value = (byte)((value << 1) + cFlag);
-            cFlag = tmp;
+            value = (byte)((value << 1) + Convert.ToInt32(cFlag));
+            cFlag = tmp == 1;
             FlagNandZ(value);
         }
 
@@ -404,14 +413,27 @@ namespace NES_Emulator.NES
         void ROR(ref byte value)
         {
             byte tmp = (byte)((value << 7) >> 7);
-            value = (byte)((value >> 1) + nFlag * 0x80);
-            cFlag = tmp;
+            value = (byte)((value >> 1) + Convert.ToInt32(nFlag) * 0x80);
+            cFlag = tmp == 1;
             FlagNandZ(value);
         }
 
+        /// <summary>
+        /// 減算
+        /// A = A - M - !C
+        /// N: 結果の最上位ビット
+        /// V: 符号付きオーバーフローが発生したか
+        /// Z: 結果が0であるか
+        /// C: 繰り下がりが発生したら 0, さもなくば 1
+        /// </summary>
+        /// <param name="address">実効アドレス</param>
         void SBC(ushort address)
         {
-
+            int sub = registerA - cpuAddress[address] - (Convert.ToInt32(cFlag) ^ 1);
+            registerA = (byte)sub;
+            FlagNandZ(registerA);
+            vFlag = ((((registerA ^ cpuAddress[address]) & 0x80) != 0) && (((registerA ^ sub) & 0x80)) != 0);
+            cFlag = sub >= 0;
         }
 
         /// <summary>
@@ -504,17 +526,17 @@ namespace NES_Emulator.NES
         /// <param name="value">結果</param>
         void FlagNandZ(byte value)
         {
-            zFlag = value == 0 ? (byte)1 : (byte)0;
-            nFlag = (byte)(value >> 7);
+            zFlag = value == 0;
+            nFlag = (value >> 7) == 1;
         }
 
         /// <summary>
         /// フラグクリア
         /// </summary>
         /// <param name="flag">Flag.</param>
-        void ClearFlag(ref byte flag)
+        void ClearFlag(ref bool flag)
         {
-            flag = 0;
+            flag = false;
             programCounter++;
         }
 
@@ -522,9 +544,9 @@ namespace NES_Emulator.NES
         /// フラグセット
         /// </summary>
         /// <param name="flag">Flag.</param>
-        void SetFlag(ref byte flag)
+        void SetFlag(ref bool flag)
         {
-            flag = 1;
+            flag = true;
             programCounter++;
         }
 
@@ -992,28 +1014,28 @@ namespace NES_Emulator.NES
                     RTI();
                     break;
                 case 0x90:
-                    Branch(cFlag == 0);
+                    Branch(cFlag);
                     break;
                 case 0xB0:
-                    Branch(cFlag == 1);
+                    Branch(cFlag);
                     break;
                 case 0xF0:
-                    Branch(zFlag == 1);
+                    Branch(zFlag);
                     break;
                 case 0x30:
-                    Branch(nFlag == 1);
+                    Branch(nFlag);
                     break;
                 case 0xD0:
-                    Branch(zFlag == 0);
+                    Branch(zFlag);
                     break;
                 case 0x10:
-                    Branch(nFlag == 0);
+                    Branch(nFlag);
                     break;
                 case 0x50:
-                    Branch(vFlag == 0);
+                    Branch(vFlag);
                     break;
                 case 0x70:
-                    Branch(vFlag == 1);
+                    Branch(vFlag);
                     break;
                 case 0x18:
                     ClearFlag(ref cFlag);
@@ -1032,13 +1054,13 @@ namespace NES_Emulator.NES
                     break;
                 /*
                  * ソフトウェア割り込みを起こす
-                 * BRK サイクル数7
+                 * BRK
                  */
                 case 0x00:
                     break;
                 /*
                  * 空の命令を実効
-                 * NOP サイクル数2
+                 * NOP
                  */
                 case 0xEA:
                     programCounter++;
