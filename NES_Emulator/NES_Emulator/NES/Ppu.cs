@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
+
 namespace NES_Emulator.NES
 {
     public class Ppu
@@ -49,7 +50,7 @@ namespace NES_Emulator.NES
          *  1スプライト4byteの構造体 64個のスプライトを保持
          *  スプライト構造
          *      Sprite.y
-         *          y座標
+         *          y座標 (実際の座標は+1)
          *      Sprite.tile
          *          スプライトSizeが8x8の場合タイルIDそのもの
          *          スプライトSizeが8x16の場合は以下のようになる
@@ -77,12 +78,17 @@ namespace NES_Emulator.NES
         byte[,,] sprite; //Sprite保存用
         byte[][] screen; //スクリーン
 
-        byte ppuStatus; //0x2002 PPUSTATUS R PPUステータス PPUステータス
+        int spriteSize; //スプライトのサイズ保存用 8 x spriteSizeとなる
+
+        bool nmiInterrupt; //NMI割り込みを有効化するか
+
         byte oamAddr;  //0x2003 OAMADDR W スプライトメモリデータ 書き込むスプライト領域のアドレス
-        byte oamData; //0x2004 OAMDATA RW デシマルモード スプライト領域のデータ
-        byte ppuScroll; //0x2005 PPUSCROLL W 背景スクロールオフセット 背景スクロール値
         ushort ppuAddr; //0x2006 PPUADDR W PPUメモリアドレス 書き込むメモリ領域のアドレス
         byte ppuData; //0x2007 PPUDATA RW PPUメモリデータ PPUメモリ領域のデータ
+        int oamDataWriteCount; //0x2004のwrite回数を記録
+        int ppuScrollWriteCount; //0x2005のwrite回数を記録
+        int scrollOffsetX; //X方向へのスクロール
+        int scrollOffsetY; //Y方向へのスクロール
         int ppuAddrWriteCount; //0x2006のWrite回数を記録
         byte ppuAddressInc; //0x2006のインクリメントする大きさ
 
@@ -93,11 +99,19 @@ namespace NES_Emulator.NES
         public Ppu(Nes nes)
         {
             ppuAddress = new byte[0x4000];
+            oam = new byte[0xff, 4];
             this.nes = nes;
 
             sprite = new byte[nes.rom.CharacterRom.Length / 16, 8, 8];
             screen = new byte[61440][];
 
+            spriteSize = 8;
+
+            nmiInterrupt = false;
+
+            oamDataWriteCount = 0;
+            scrollOffsetX = 0;
+            scrollOffsetY = 0;
             ppuAddrWriteCount = 0;
             ppuAddressInc = 0x01;
 
@@ -122,8 +136,13 @@ namespace NES_Emulator.NES
                  * S : スプライトパターンテーブル (0:$0000, 1:$1000)
                  * I : PPU アドレスインクリメント (0:+1, 1:+32) - VRAM 上で +1 は横方向、+32 は縦方向
                  * N : ネームテーブル (0:$2000, 1:$2400, 2:$2800, 3:$2C00)
-                 * 
-                 * 0x2001 PPUMASK W コントロールレジスタ2 背景イネーブルなどPPUの設定
+                 */
+                case 2000:
+                    nmiInterrupt = (value >> 7) == 1;
+                    spriteSize = (value << 2) >> 7;
+                    ppuAddressInc = (byte)(((value << 5) >> 7) * 31 + 1);
+                    break;
+                 /* 0x2001 PPUMASK W コントロールレジスタ2 背景イネーブルなどPPUの設定
                  * bit 76543210
                  *     BGRsbMmG
                  * 
@@ -136,16 +155,34 @@ namespace NES_Emulator.NES
                  * m : 画面左端 8px で BG クリッピング (0:有効, 1:無効)
                  * G : 0:カラー, 1:モノクロ
                  */
-                case 0x2000:
                 case 0x2001:
                     WriteMemory(address, value);
                     break;
+                //読み書きするOAMアドレスを指定
                 case 0x2003:
+                    oamAddr = value;
                     break;
+                //0x2003で指定したOAMアドレスにy, tile, attr, xの順に書き込む
                 case 0x2004:
+                    oam[oamAddr, oamDataWriteCount] = value;
+                    oamDataWriteCount++;
+                    if (oamDataWriteCount > 3) oamDataWriteCount = 0; 
                     break;
+                //1回目の書き込みでx, 2回目の書き込みでyのスクロールオフセットを指定
                 case 0x2005:
+                    switch(ppuScrollWriteCount)
+                    {
+                        case 0:
+                            scrollOffsetX = value;
+                            ppuScrollWriteCount++;
+                            break;
+                        case 1:
+                            scrollOffsetY = value;
+                            ppuScrollWriteCount = 0;
+                            break;
+                    }
                     break;
+                //1回目の書き込みで上位バイト, 2回目の書き込みで下位バイトを設定
                 case 0x2006:
                     switch (ppuAddrWriteCount)
                     {
@@ -159,26 +196,53 @@ namespace NES_Emulator.NES
                             break;
                     }
                     break;
+                //ppuAddrのアドレスに書き込み
                 case 0x2007:
                     ppuData = value;
                     WriteMemory(ppuAddr, value);
                     ppuAddr += ppuAddressInc;
                     break;
+                //OMAへDMA転送
+                case 0x4014:
+                    for (int i = 0, j = value * 0x100; i < 0xff; i++, j += 4)
+                    {
+                        oam[i, 0] = nes.ReadCpuMemory((ushort)j);
+                        oam[i, 1] = nes.ReadCpuMemory((ushort)(j + 1));
+                        oam[i, 2] = nes.ReadCpuMemory((ushort)(j + 2));
+                        oam[i, 3] = nes.ReadCpuMemory((ushort)(j + 3));
+                    }
+                    break;
             }
         }
 
 
-        public void ReadPpuRegister(ushort address)
+        public byte ReadPpuRegister(ushort address)
         {
             switch (address)
             {
+                /*
+                 * 0x2002 PPUSTATUS R PPUステータス PPUステータス
+                 * bit 76543210
+                 *     VSO.....
+                 * 
+                 * V : VBLANKフラグ
+                 * S : Sprite 0 hit
+                 * O : スプライトオーバーフラグ
+                 * 
+                 * 読み取り後VBLANKフラグが下りる
+                 * 0x2005, 0x2006の書き込み状態がリセット
+                 */
                 case 0x2002:
-                    break;
+                    int vblankFlag = (RenderLine > 239 && RenderLine < 262) ? 1 : 0;
+                    oamDataWriteCount = 0;
+                    ppuAddrWriteCount = 0;
+                    return (byte)(vblankFlag * 0x80);
                 case 0x2004:
                     break;
                 case 0x2007:
                     break;
             }
+            return 0x00;
         }
 
 
@@ -195,8 +259,12 @@ namespace NES_Emulator.NES
                 _totalPpuCycle = value;
                 if (_totalPpuCycle >= 341 && RenderLine < 240)
                 {
-                    BgRenderScreen();
+                    BgRenderScreen(scrollOffsetX, scrollOffsetY);
                     _totalPpuCycle -= 341;
+                }
+                else if (_totalPpuCycle >= 341 && RenderLine >= 240)
+                {
+                    RenderLine++;
                 }
             }
         }
@@ -213,7 +281,7 @@ namespace NES_Emulator.NES
             set
             {
                 _renderLine = value;
-                if (_renderLine == 240)
+                if (_renderLine > 261)
                 {
                     nes.gameScreen.RenderScreen(screen);
                     _renderLine = 0;
@@ -236,10 +304,14 @@ namespace NES_Emulator.NES
         /// <summary>
         /// BGスクリーンを1ライン描画
         /// </summary>
-        void BgRenderScreen()
+        /// <param name="x">開始X座標</param>
+        /// <param name="y">開始Y座標</param>
+        void BgRenderScreen(int x, int y)
         {
-            int nameTableNumber = 0x2000 + (RenderLine / 8) * 32; //読み込むネームテーブルのアドレス
-            int attrTableNumber = 0x23C0; //読み込む属性テーブルのアドレス
+            int nameTableNumber = 0x2000 + (RenderLine / 8) * 32 + x / 8; //読み込むネームテーブルのアドレス
+            nameTableNumber = GetNameTableNumber(nameTableNumber);
+            int attrTableNumber = 0x23C0 + (RenderLine / 16) * 32 + x / 16; //読み込む属性テーブルのアドレス
+            attrTableNumber = GetAttrTableNumber(attrTableNumber);
             int attrTablePaletteNumber = 0; //パレット内の読み込む色の番号
             int column = 0; //現在の行
             int spriteLine = RenderLine % 8; //今読み込んでるラインのスプライトの列
@@ -250,7 +322,9 @@ namespace NES_Emulator.NES
                 int unitColumn = column - (32 * (column / 32));
 
                 if ((column % 8) == 0 && column != 0) nameTableNumber++;
+                nameTableNumber = GetNameTableNumber(nameTableNumber);
                 if ((i % 32) == 0 && i != RenderLine * 256) attrTableNumber++;
+                attrTableNumber = GetAttrTableNumber(attrTableNumber);
 
                 if (unitRenderLine < 16 && unitColumn < 16)
                 {
@@ -275,6 +349,60 @@ namespace NES_Emulator.NES
                 column++;
             }
             RenderLine++;
+        }
+
+        int GetNameTableNumber(int nameTableNumber)
+        {
+            if (0x2780 > nameTableNumber && 0x23C0 <= nameTableNumber)
+            {
+                nameTableNumber = 0x2400 + nameTableNumber - 0x23C0;
+            }
+            else if(0x2B40 > nameTableNumber && 0x2780 <= nameTableNumber)
+            {
+                nameTableNumber = 0x2800 + nameTableNumber - 0x2780;
+            }
+            else if(0x2F00 > nameTableNumber && 0x2B40 <= nameTableNumber)
+            {
+                nameTableNumber = 0x2C00 + nameTableNumber - 0x2B40;
+            }
+            return nameTableNumber;
+        }
+
+        int GetAttrTableNumber(int attrTableNumber)
+        {
+            if (0x2440 > attrTableNumber && 0x2400 <= attrTableNumber)
+            {
+                attrTableNumber = 0x27C0 + attrTableNumber - 0x2400;
+            }
+            else if(0x2480 > attrTableNumber && 0x2440 <= attrTableNumber)
+            {
+                attrTableNumber = 0x2BC0 + attrTableNumber - 0x2440;
+            }
+            else if(0x24C0 > attrTableNumber && 0x2480 <= attrTableNumber)
+            {
+                attrTableNumber = 0x2FC0 + attrTableNumber - 0x2480;
+            }
+            return attrTableNumber;
+        }
+
+        /// <summary>
+        /// スプライトを描画
+        /// </summary>
+        void OamRenderScreen()
+        {
+            for (int i = 0;i < 0xff;i++)
+            {
+                int x = oam[i, 3], y = oam[i, 0] + 1;
+                int spriteIndex;
+                bool verticalReverse = (oam[i, 2] >> 7) == 1;
+                bool horizontalReverse = ((oam[i, 2] << 1) >> 7) == 1;
+                bool front = ((oam[i, 2] << 2) >> 7) == 0;
+                int paletteNumber = ((oam[i, 2] << 6) >> 7) * 2 + ((oam[i, 2] << 7) >> 7);
+                if(front)
+                {
+                    
+                }
+            }
         }
 
 
