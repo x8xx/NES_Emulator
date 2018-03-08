@@ -498,6 +498,7 @@ namespace NES_Emulator.NES
         {
             if (flag)
             {
+                Debug.WriteLine("Branch");
                 sbyte address;
                 byte tmp = cpuAddress[programCounter + 1];
                 if ((tmp >> 7) == 1)
@@ -1014,7 +1015,7 @@ namespace NES_Emulator.NES
                     RTI();
                     break;
                 case 0x90:
-                    Branch(cFlag);
+                    Branch(!cFlag);
                     break;
                 case 0xB0:
                     Branch(cFlag);
@@ -1026,13 +1027,13 @@ namespace NES_Emulator.NES
                     Branch(nFlag);
                     break;
                 case 0xD0:
-                    Branch(zFlag);
+                    Branch(!zFlag);
                     break;
                 case 0x10:
-                    Branch(nFlag);
+                    Branch(!nFlag);
                     break;
                 case 0x50:
-                    Branch(vFlag);
+                    Branch(!vFlag);
                     break;
                 case 0x70:
                     Branch(vFlag);
