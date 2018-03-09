@@ -308,23 +308,60 @@ namespace NES_Emulator.NES
         /// <param name="y">開始Y座標</param>
         void BgRenderScreen(int x, int y)
         {
-            int nameTableNumber = 0x2000 + (RenderLine / 8) * 32 + x / 8; //読み込むネームテーブルのアドレス
-            nameTableNumber = GetNameTableNumber(nameTableNumber);
-            int attrTableNumber = 0x23C0 + (RenderLine / 16) * 32 + x / 16; //読み込む属性テーブルのアドレス
-            attrTableNumber = GetAttrTableNumber(attrTableNumber);
+            int renderLine = RenderLine + y; //読み込む列
+            int initialNameTable = 0x2000; //読み込むネームテーブル
+            int initialAttrTable = 0x23C0; //読み込む属性テーブル
+            if (renderLine >= 240 && x < 256)
+            {
+                initialNameTable = 0x2800; //ネームテーブル2
+                initialAttrTable = 0x2BC0; //属性テーブル2
+                renderLine -= 240;
+            }
+            else if (renderLine < 240 && x >= 256)
+            {
+                initialNameTable = 0x2400; //ネームテーブル1
+                initialAttrTable = 0x27C0; //属性テーブル1
+                x -= 256;
+            }
+            else if (renderLine >= 240 && x >= 256)
+            {
+                initialNameTable = 0x2C00; //ネームテーブル3
+                initialAttrTable = 0x2FC0; //属性テーブル3
+                x -= 256;
+                renderLine -= 240;
+            }
+            int nameTableNumber = initialNameTable + (renderLine / 8) * 32 + x / 8; //読み込むネームテーブルのアドレス
+            int attrTableNumber = initialAttrTable + (renderLine / 16) * 32 + x / 16; //読み込む属性テーブルのアドレス
+
             int attrTablePaletteNumber = 0; //パレット内の読み込む色の番号
-            int column = 0; //現在の行
-            int spriteLine = RenderLine % 8; //今読み込んでるラインのスプライトの列
-            int unitRenderLine = RenderLine - (32 * (RenderLine / 32));
+            int column = x; //現在の行
+
+            int spriteLine = renderLine % 8; //今読み込んでるラインのスプライトの列
+            int unitRenderLine = renderLine - (32 * (renderLine / 32));
 
             for (int i = RenderLine * 256;i < (RenderLine + 1) * 256;i++)
             {
                 int unitColumn = column - (32 * (column / 32));
 
-                if ((column % 8) == 0 && column != 0) nameTableNumber++;
-                nameTableNumber = GetNameTableNumber(nameTableNumber);
-                if ((i % 32) == 0 && i != RenderLine * 256) attrTableNumber++;
-                attrTableNumber = GetAttrTableNumber(attrTableNumber);
+                //ネームテーブルの加算
+                if ((column % 8) == 0 && column != 0) 
+                {
+                    nameTableNumber++;
+                    if (nameTableNumber == (initialNameTable + 0x20))
+                    {
+                        nameTableNumber += 0x3E0;
+                    }
+                }
+
+                //属性テーブルの加算
+                if ((i % 32) == 0 && i != RenderLine * 256)
+                {
+                    attrTableNumber++;
+                    if (attrTableNumber == (initialAttrTable + 0x10))
+                    {
+                        attrTableNumber += 0x3F0;
+                    }
+                }
 
                 if (unitRenderLine < 16 && unitColumn < 16)
                 {
@@ -351,39 +388,6 @@ namespace NES_Emulator.NES
             RenderLine++;
         }
 
-        int GetNameTableNumber(int nameTableNumber)
-        {
-            if (0x2780 > nameTableNumber && 0x23C0 <= nameTableNumber)
-            {
-                nameTableNumber = 0x2400 + nameTableNumber - 0x23C0;
-            }
-            else if(0x2B40 > nameTableNumber && 0x2780 <= nameTableNumber)
-            {
-                nameTableNumber = 0x2800 + nameTableNumber - 0x2780;
-            }
-            else if(0x2F00 > nameTableNumber && 0x2B40 <= nameTableNumber)
-            {
-                nameTableNumber = 0x2C00 + nameTableNumber - 0x2B40;
-            }
-            return nameTableNumber;
-        }
-
-        int GetAttrTableNumber(int attrTableNumber)
-        {
-            if (0x2440 > attrTableNumber && 0x2400 <= attrTableNumber)
-            {
-                attrTableNumber = 0x27C0 + attrTableNumber - 0x2400;
-            }
-            else if(0x2480 > attrTableNumber && 0x2440 <= attrTableNumber)
-            {
-                attrTableNumber = 0x2BC0 + attrTableNumber - 0x2440;
-            }
-            else if(0x24C0 > attrTableNumber && 0x2480 <= attrTableNumber)
-            {
-                attrTableNumber = 0x2FC0 + attrTableNumber - 0x2480;
-            }
-            return attrTableNumber;
-        }
 
         /// <summary>
         /// スプライトを描画
