@@ -1,14 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 
 using Xamarin.Forms;
 
 namespace NES_Emulator.Views
 {
-    public partial class SelectRom : ContentPage
+    public partial class SelectRomPage : ContentPage
     {
-        public SelectRom()
+        public SelectRomPage()
         {
             InitializeComponent();
         }

@@ -36,19 +36,18 @@ namespace NES_Emulator.ViewModels
             SelectRom = new DelegateCommand(() =>
             {
                 Nes nes = new Nes();
-                bool flag = nes.PowerOn(TestRomBinary.helloWorld);
-                Test = flag.ToString();
-                nes.gameScreen.InitialScreen();
+                Test = fileSelect.GetText();
+                fileSelect.GetNesList();
+                nes.PowerOn(TestRomBinary.helloWorld);
                 Sprite = ImageSource.FromStream(() => nes.gameScreen.ScreenMemoryStream);
                 Device.StartTimer(TimeSpan.FromMilliseconds(16), () => 
                 {
                     nes.gameScreen.notificationScreenUpdate = false;
                     nes.OperatingCpu();
-                    return false;
+                    return true;
                 });
             });
         }
-
         public void OnNavigatedFrom(NavigationParameters parameters)
         {
 

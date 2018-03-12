@@ -15,5 +15,14 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Remove="NES\PpuRegister.cs" />
+    <Compile Remove="Views\SelectRom.xaml.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Update="Views\SelectView.xaml.cs">
+      <DependentUpon>SelectPage.xaml</DependentUpon>
+    </Compile>
+    <Compile Update="Views\SelectRomPage.xaml.cs">
+      <DependentUpon>SelectRomPage.xaml</DependentUpon>
+    </Compile>
   </ItemGroup>
 </Project>
