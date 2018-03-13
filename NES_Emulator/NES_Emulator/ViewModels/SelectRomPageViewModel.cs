@@ -4,6 +4,8 @@ using Prism.Navigation;
 using Prism.Commands;
 using System.Windows.Input;
 using NES_Emulator.NES;
+using System.Collections.ObjectModel;
+using NES_Emulator.FileManage;
 using System.IO;
 using System.Threading.Tasks;
 using Xamarin.Forms;
@@ -11,43 +13,37 @@ using System.Diagnostics;
 
 namespace NES_Emulator.ViewModels
 {
-    public class SelectRomViewModel: BindableBase, INavigationAware
+    public class SelectRomPageViewModel: BindableBase, INavigationAware
     {
         public ICommand SelectRom { get; }
-        FileManage.IFileSelect fileSelect;
+        public Command<RomFile> LoadRom { get; }
 
-        string _test;
-        public string Test
+        ObservableCollection<RomFile> _nesList;
+        public ObservableCollection<RomFile> NesList
         {
-            get { return _test; }
-            set { SetProperty(ref _test, value); }
+            get { return _nesList; }
+            set { SetProperty(ref _nesList, value); }
         }
 
-        ImageSource _sprite;
-        public ImageSource Sprite
+        public string _romTitle;
+        public string RomTitle
         {
-            get { return _sprite; }
-            set { SetProperty(ref _sprite, value); }
+            get { return _romTitle; }
+            set { SetProperty(ref _romTitle, value); }
         }
 
-        public SelectRomViewModel(FileManage.IFileSelect fileSelect)
+        public SelectRomPageViewModel(INavigationService navigationService, IFileSelect fileSelect)
         {
-           this.fileSelect = fileSelect;
-            SelectRom = new DelegateCommand(() =>
+            NesList = fileSelect.GetNesList();
+
+            LoadRom = new Command<RomFile>(x => 
             {
-                Nes nes = new Nes();
-                Test = fileSelect.GetText();
-                fileSelect.GetNesList();
-                nes.PowerOn(TestRomBinary.helloWorld);
-                Sprite = ImageSource.FromStream(() => nes.gameScreen.ScreenMemoryStream);
-                Device.StartTimer(TimeSpan.FromMilliseconds(16), () => 
-                {
-                    nes.gameScreen.notificationScreenUpdate = false;
-                    nes.OperatingCpu();
-                    return true;
-                });
+                var navigationParameters = new NavigationParameters();
+                navigationParameters.Add("rom", fileSelect.GetNesRom(x.Title));
+                navigationService.NavigateAsync("GamePage", navigationParameters);
             });
         }
+
         public void OnNavigatedFrom(NavigationParameters parameters)
         {
 

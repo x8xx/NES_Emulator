@@ -1,11 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<ContentPage xmlns="http://xamarin.com/schemas/2014/forms" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" xmlns:prism="clr-namespace:Prism.Mvvm;assembly=Prism.Forms" x:Class="NES_Emulator.Views.SelectRomPage">
+<ContentPage xmlns="http://xamarin.com/schemas/2014/forms" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" xmlns:prism="cll-namespace:Prism.Mvvm;assembly=Prism.Forms" xmlns:b="clr-namespace:NES_Emulator.Behaviors;assembly=NES_Emulator" x:Class="NES_Emulator.Views.SelectRomPage">
     <ContentPage.Padding>
         <OnPlatform x:TypeArguments="Thickness" iOS="0, 20, 0, 0"/>
     </ContentPage.Padding>
-    <StackLayout>
-        <Button Text="Select Rom" Command="{Binding SelectRom}"/>
-        <Label Text="{Binding Test}"/>
-        <Image Source="{Binding Sprite}" HeightRequest="400"/>
-    </StackLayout>
+    <ListView ItemsSource="{Binding NesList}">
+        <ListView.Behaviors>
+            <b:ItemSelectedToCommandBehavior Command="{Binding LoadRom}"/>
+        </ListView.Behaviors>
+        <ListView.ItemTemplate>
+            <DataTemplate>
+                <ViewCell>
+                    <Label Text="{Binding Title}"/>
+                </ViewCell>
+            </DataTemplate>
+        </ListView.ItemTemplate>
+    </ListView>
 </ContentPage>
