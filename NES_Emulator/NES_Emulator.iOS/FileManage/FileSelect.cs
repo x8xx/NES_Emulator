@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Collections.ObjectModel;
 using NES_Emulator.FileManage;
 using UIKit;
 using CloudKit;
 using Foundation;
+using System.Diagnostics;
 
 namespace NES_Emulator.iOS.FileManage
 {
@@ -10,24 +12,28 @@ namespace NES_Emulator.iOS.FileManage
     {
         public string GetText()
         {
-            return "test";
+            return Environment.GetFolderPath(Environment.SpecialFolder.Personal);
         }
 
-        public void OpenDocumentBrowserView()
+        /// <summary>
+        ///  アプリケーションフォルダのRom一覧を取得
+        /// </summary>
+        /// <returns>The nes list.</returns>
+        public ObservableCollection<RomFile> GetNesList()
         {
-            var nsmdq = new NSMetadataQuery();
-
+            NSFileManager file = new NSFileManager();
+            var nesList = new ObservableCollection<RomFile>();
+            foreach(var name in file.Subpaths(Environment.GetFolderPath(Environment.SpecialFolder.Personal)))
+            {
+                if(name.Contains(".nes")) nesList.Add(new RomFile(name));
+            }
+            return nesList;
         }
 
-        void DidPickDocument(object sender, UIDocumentPickedEventArgs e)
+        public byte[] GetNesRom(string romName)
         {
-            
+            NSData data = NSData.FromFile(Environment.GetFolderPath(Environment.SpecialFolder.Personal) + "/" + romName);
+            return data.ToArray();
         }
-
-        void WasCancelled(object sender, EventArgs e)
-        {
-            
-        }
-
     }
 }
