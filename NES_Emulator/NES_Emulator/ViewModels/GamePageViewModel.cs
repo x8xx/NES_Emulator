@@ -30,9 +30,9 @@ namespace NES_Emulator.ViewModels
         {
             Nes nes = new Nes();
             nes.PowerOn(rom);
-            GameScreen = ImageSource.FromStream(() => nes.gameScreen.ScreenMemoryStream);
             Device.StartTimer(TimeSpan.FromMilliseconds(16), () =>
             {
+                GameScreen = ImageSource.FromStream(() => nes.gameScreen.ScreenMemoryStream);
                 nes.gameScreen.notificationScreenUpdate = false;
                 nes.OperatingCpu();
                 return true;
