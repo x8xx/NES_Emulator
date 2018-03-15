@@ -33,7 +33,7 @@ namespace NES_Emulator.ViewModels
             Device.StartTimer(TimeSpan.FromMilliseconds(16), () =>
             {
                 GameScreen = ImageSource.FromStream(() => nes.gameScreen.ScreenMemoryStream);
-                nes.gameScreen.notificationScreenUpdate = false;
+                nes.ppu.notificationScreenUpdate = false;
                 nes.OperatingCpu();
                 return true;
             });

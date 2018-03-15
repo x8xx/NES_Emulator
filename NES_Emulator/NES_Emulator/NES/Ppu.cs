@@ -81,6 +81,7 @@ namespace NES_Emulator.NES
         int spriteSize; //スプライトのサイズ保存用 8 x spriteSizeとなる
 
         bool nmiInterrupt; //NMI割り込みを有効化するか
+        bool verticalMirror; //true : 垂直ミラー, false : 水平ミラー
 
         byte oamAddr;  //0x2003 OAMADDR W スプライトメモリデータ 書き込むスプライト領域のアドレス
         ushort ppuAddr; //0x2006 PPUADDR W PPUメモリアドレス 書き込むメモリ領域のアドレス
@@ -95,6 +96,8 @@ namespace NES_Emulator.NES
         int _totalPpuCycle; //PPUの合計サイクル数
         int _renderLine; //次に描画するlineを保持
 
+        public bool notificationScreenUpdate { get; set; } //1フレーム更新通知
+
         Nes nes;
         public Ppu(Nes nes)
         {
@@ -102,12 +105,13 @@ namespace NES_Emulator.NES
             oam = new byte[0xff, 4];
             this.nes = nes;
 
-            sprite = new byte[nes.rom.CharacterRom.Length / 16, 8, 8];
+            sprite = new byte[nes.CharacterRimSize / 16, 8, 8];
             screen = new byte[61440][];
 
             spriteSize = 8;
 
             nmiInterrupt = false;
+            verticalMirror = nes.verticalMirror;
 
             oamDataWriteCount = 0;
             scrollOffsetX = 0;
@@ -261,6 +265,7 @@ namespace NES_Emulator.NES
                 {
                     BgRenderScreen(scrollOffsetX, scrollOffsetY);
                     _totalPpuCycle -= 341;
+                    nes.gameScreen.RenderScreen(screen, RenderLine - 1);
                 }
                 else if (_totalPpuCycle >= 341 && RenderLine >= 240)
                 {
@@ -272,7 +277,7 @@ namespace NES_Emulator.NES
 
         /// <summary>
         /// 次に描画するラインを保存する
-        /// 240ライン描画できたら画像化する
+        /// 262ライン以上でラインを0にする
         /// </summary>
         /// <value>The render line.</value>
         int RenderLine
@@ -283,7 +288,7 @@ namespace NES_Emulator.NES
                 _renderLine = value;
                 if (_renderLine > 261)
                 {
-                    nes.gameScreen.RenderScreen(screen);
+                    notificationScreenUpdate = true;
                     _renderLine = 0;
                 }
             }
@@ -298,6 +303,38 @@ namespace NES_Emulator.NES
         public void WriteMemory(ushort address, byte value)
         {
             ppuAddress[address] = value;
+            if (verticalMirror) //垂直ミラー
+            {
+                if (address >= 0x2000 && address <= 0x27FF)
+                {
+                    ppuAddress[address + 0x800] = value;
+                }
+                else if (address >= 0x2800 && address <= 0x2FFF)
+                {
+                    ppuAddress[address - 0x800] = value;
+                }
+            }
+            else //水平ミラー
+            {
+                if ((address >= 0x2000 && address <= 0x23FF) || (address >= 0x2800 && address <= 0x2BFF))
+                {
+                    ppuAddress[address + 0x400] = value;
+                }
+                else if ((address >= 0x2400 && address <= 0x27FF) || (address >= 0x2C00 && address <= 0x2FFF))
+                {
+                    ppuAddress[address - 0x400] = value;
+                }
+            }
+
+            switch (address) //パレットミラー
+            {
+                case 0x3F00:
+                case 0x3F04:
+                case 0x3F08:
+                case 0x3F0C:
+                    ppuAddress[address + 0x10] = value;
+                    break;
+            }
         }
 
 
@@ -379,8 +416,7 @@ namespace NES_Emulator.NES
                 {
                     attrTablePaletteNumber = 3;
                 }
-
-                screen[i] = Nes.paletteColors[ppuAddress[0x3F00 //パレットに保存してる値がpaletteColorsの添字
+                screen[i] = paletteColors[ppuAddress[0x3F00 //パレットに保存してる値がpaletteColorsの添字
                                                          + 4 * GetPalette(ppuAddress[attrTableNumber], attrTablePaletteNumber) 
                                                          + sprite[ppuAddress[nameTableNumber], spriteLine, column - (8 * (column / 8))]]];
                 column++;
@@ -435,8 +471,8 @@ namespace NES_Emulator.NES
             {
                 for (int j = i * 16; j < i * 16 + 8; j++)
                 {
-                    string highOrder = BinaryNumberConversion(nes.rom.CharacterRom[j + 8]);
-                    string lowOrder = BinaryNumberConversion(nes.rom.CharacterRom[j]);
+                    string highOrder = BinaryNumberConversion(ppuAddress[j + 8]);
+                    string lowOrder = BinaryNumberConversion(ppuAddress[j]);
                     for (int l = 0;l < 8; l++)
                     {
                         sprite[i, count, l] = (byte)(int.Parse(highOrder[l].ToString()) * 2 + int.Parse(lowOrder[l].ToString()));
@@ -466,5 +502,45 @@ namespace NES_Emulator.NES
             }
             return convertNumber;
         }
+
+        //パレットカラー
+        byte[][] paletteColors = new byte[][]
+        {
+            new byte[]{ 0x75, 0x75, 0x75 }, new byte[]{ 0x27, 0x1B, 0x8F },
+            new byte[]{ 0x00, 0x00, 0xAB }, new byte[]{ 0x47, 0x00, 0x9F },
+            new byte[]{ 0x8F, 0x00, 0x77 }, new byte[]{ 0xAB, 0x00, 0x13 },
+            new byte[]{ 0xA7, 0x00, 0x00 }, new byte[]{ 0x7F, 0x0B, 0x00 },
+            new byte[]{ 0x43, 0x2F, 0x00 }, new byte[]{ 0x00, 0x47, 0x00 },
+            new byte[]{ 0x00, 0x51, 0x00 }, new byte[]{ 0x00, 0x3F, 0x17 },
+            new byte[]{ 0x1B, 0x3F, 0x5F }, new byte[]{ 0x00, 0x00, 0x00 },
+            new byte[]{ 0x05, 0x05, 0x05 }, new byte[]{ 0x05, 0x05, 0x05 },
+
+            new byte[]{ 0xBC, 0xBC, 0xBC }, new byte[]{ 0x00, 0x73, 0xEF },
+            new byte[]{ 0x23, 0x3B, 0xEF }, new byte[]{ 0x83, 0x00, 0xF3 },
+            new byte[]{ 0xBF, 0x00, 0xBF }, new byte[]{ 0xE7, 0x00, 0x5B },
+            new byte[]{ 0xDB, 0x2B, 0x00 }, new byte[]{ 0xCB, 0x4F, 0x0F },
+            new byte[]{ 0x8B, 0x73, 0x00 }, new byte[]{ 0x00, 0x97, 0x00 },
+            new byte[]{ 0x00, 0xAB, 0x00 }, new byte[]{ 0x00, 0x93, 0x3B },
+            new byte[]{ 0x00, 0x83, 0x8B }, new byte[]{ 0x11, 0x11, 0x11 },
+            new byte[]{ 0x09, 0x09, 0x09 }, new byte[]{ 0x09, 0x09, 0x09 },
+
+            new byte[]{ 0xFF, 0xFF, 0xFF }, new byte[]{ 0x3F, 0xBF, 0xFF },
+            new byte[]{ 0x5F, 0x97, 0xFF }, new byte[]{ 0xA7, 0x8B, 0xFD },
+            new byte[]{ 0xF7, 0x7B, 0xFF }, new byte[]{ 0xFF, 0x77, 0xB7 },
+            new byte[]{ 0xFF, 0x77, 0x63 }, new byte[]{ 0xFF, 0x9B, 0x3B },
+            new byte[]{ 0xF3, 0xBF, 0x3F }, new byte[]{ 0x83, 0xD3, 0x13 },
+            new byte[]{ 0x4F, 0xDF, 0x4B }, new byte[]{ 0x58, 0xF8, 0x98 },
+            new byte[]{ 0x00, 0xEB, 0xDB }, new byte[]{ 0x66, 0x66, 0x66 },
+            new byte[]{ 0x0D, 0x0D, 0x0D }, new byte[]{ 0x0D, 0x0D, 0x0D },
+
+            new byte[]{ 0xFF, 0xFF, 0xFF }, new byte[]{ 0xAB, 0xE7, 0xFF },
+            new byte[]{ 0xC7, 0xD7, 0xFF }, new byte[]{ 0xD7, 0xCB, 0xFF },
+            new byte[]{ 0xFF, 0xC7, 0xFF }, new byte[]{ 0xFF, 0xC7, 0xDB },
+            new byte[]{ 0xFF, 0xBF, 0xB3 }, new byte[]{ 0xFF, 0xDB, 0xAB },
+            new byte[]{ 0xFF, 0xE7, 0xA3 }, new byte[]{ 0xE3, 0xFF, 0xA3 },
+            new byte[]{ 0xAB, 0xF3, 0xBF }, new byte[]{ 0xB3, 0xFF, 0xCF },
+            new byte[]{ 0x9F, 0xFF, 0xF3 }, new byte[]{ 0xDD, 0xDD, 0xDD },
+            new byte[]{ 0x11, 0x11, 0x11 }, new byte[]{ 0x11, 0x11, 0x11 }
+        };
     }
 }

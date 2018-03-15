@@ -1,6 +1,5 @@
 ﻿using System.IO;
 using System.Collections.Generic;
-using System.Diagnostics;
 
 namespace NES_Emulator.NES
 {
@@ -9,7 +8,6 @@ namespace NES_Emulator.NES
         const int headerSize = 54;
         byte[] screen;
         public MemoryStream ScreenMemoryStream { get; private set; }
-        public bool notificationScreenUpdate { get; set; }
 
         /// <summary>
         /// BMPを作成
@@ -44,36 +42,22 @@ namespace NES_Emulator.NES
                 }
             }
 
-            InitialScreen(); //画面の初期化
             ScreenMemoryStream = new MemoryStream(screen);
-        }
-
-        /// <summary>
-        /// 画面の初期化(黒)
-        /// </summary>
-        public void InitialScreen()
-        {
-            for (int i = headerSize;i < screen.Length;i++)
-            {
-                screen[i] = 225;
-            }
         }
 
         /// <summary>
         /// 画面の更新
         /// </summary>
         /// <param name="table">Table.</param>
-        public void RenderScreen(byte[][] table)
+        public void RenderScreen(byte[][] table, int renderLine)
         {
-            for (int i = headerSize, j = 0;j < 61440;i += 4, j++)
+            for (int i = headerSize + renderLine * 256 * 4, j = renderLine * 256;j < (renderLine + 1) * 256;i += 4, j++)
             {
-                //Debug.WriteLine("RS: " + i);
                 screen[i] = table[j][2];
                 screen[i + 1] = table[j][1];
                 screen[i + 2] = table[j][0];
                 screen[i + 3] = 255;
             }
-            notificationScreenUpdate = true;
         }
     }
 }
