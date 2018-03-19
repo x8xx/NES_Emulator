@@ -203,7 +203,12 @@ namespace NES_Emulator.NES
         /// <returns>実効アドレス</returns>
         ushort IndirectX()
         {
-            return (ushort)cpuAddress[ZeropageX()];
+            byte tmp = (byte)(ReadMemory(programCounter) + registerX);
+            programCounter++;
+            ushort address = ReadMemory(tmp);
+            tmp++;
+            address |= (ushort)(ReadMemory(tmp) << 8);
+            return address;
         }
 
         /// <summary>
@@ -212,8 +217,14 @@ namespace NES_Emulator.NES
         /// <returns>実効アドレス</returns>
         ushort IndirectY()
         {
-            return (ushort)cpuAddress[Zeropage() + registerY];
+            byte tmp = ReadMemory(programCounter);
+            programCounter++;
+            ushort tmp2 = ReadMemory(tmp);
+            tmp++;
+            tmp2 |= (ushort)(ReadMemory(tmp) << 8);
+            return (ushort)(tmp2 + registerY);
         }
+
         /*------------------------------------------------------------
          * アドレッシング・モードここまで
          -------------------------------------------------------------*/
