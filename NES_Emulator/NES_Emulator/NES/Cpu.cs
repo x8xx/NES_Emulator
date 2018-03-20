@@ -17,13 +17,14 @@ namespace NES_Emulator.NES
         bool nFlag; //演算結果のbit7の値
         bool vFlag; //演算結果がオーバーフローを起こしたらセット
         bool bFlag; //BRK発生時にセット, IRQ発生時にクリア
-        bool iFlag; //0:IRQ許可, 1:IRQ禁止
+        bool iFlag; //false : IRQ許可, true : IRQ禁止
         bool zFlag; //演算結果が0のときにセット
         bool cFlag; //キャリー発生時にセット
 
         /* CPUメモリマップ
          * アドレス        サイズ
          * 0x0000〜0x07FF 0x0800 WRAM
+         * => 0x0000〜0x00FF ゼロページ
          * => 0x0100〜0x01FF 0x0100 スタック
          * 0x2000〜0x2007 0x0008 PPUレジスタ
          * 0x4000〜0x401F 0x0020 APU I/O, PAD
@@ -59,12 +60,32 @@ namespace NES_Emulator.NES
             Debug.WriteLine("N: {0}, V: {1}, B: {2}, I: {3}, Z: {4}, C: {5}", nFlag, vFlag, bFlag, iFlag, zFlag, cFlag);
         }
 
+        public void CheckIrq()
+        {
+            if (!iFlag)
+            {
+                
+            }
+        }
+
+
+        /// <summary>
+        /// アドレスに書き込み
+        /// </summary>
+        /// <param name="address">アドレス</param>
+        /// <param name="value">値</param>
         public void WriteMemory(ushort address, byte value)
         {
             if ((address >= 0x2000 && address <= 0x2007) || address == 0x4014) nes.ppu.WritePpuRegister(address, value);
             cpuAddress[address] = value;
         }
 
+
+        /// <summary>
+        /// アドレスの値を読み込み
+        /// </summary>
+        /// <returns>値</returns>
+        /// <param name="address">アドレス</param>
         public byte ReadMemory(ushort address)
         {
             if (address == 0x2002 || address == 0x2007)
@@ -141,7 +162,7 @@ namespace NES_Emulator.NES
         {
             ushort address = ++programCounter;
             programCounter++;
-            return (ushort)(cpuAddress[address] + registerX);
+            return (byte)(cpuAddress[address] + registerX);
         }
 
         /// <summary>
@@ -152,7 +173,7 @@ namespace NES_Emulator.NES
         {
             ushort address = ++programCounter;
             programCounter++;
-            return (ushort)(cpuAddress[address] + registerY);
+            return (byte)(cpuAddress[address] + registerY);
         }
 
         /// <summary>
@@ -213,7 +234,8 @@ namespace NES_Emulator.NES
         /// <returns>実効アドレス</returns>
         ushort IndirectY()
         {
-            return (ushort)cpuAddress[Zeropage() + registerY];
+            return (ushort)(ReadMemory((ushort)(ReadMemory(programCounter++) + 1)) * 0x100 + ReadMemory(ReadMemory(programCounter++)) + registerY);
+            //return (ushort)cpuAddress[Zeropage() + registerY];
             /*????
              * byte tmp = ReadMemory(programCounter);
             programCounter++;
@@ -282,7 +304,7 @@ namespace NES_Emulator.NES
             int sum = registerA + ReadMemory(address) + Convert.ToInt32(cFlag);
             registerA = (byte)sum;
             FlagNandZ(registerA);
-            vFlag = ((((registerA ^ ReadMemory(address)) & 0x80) == 0) && (((registerA ^ sum) & 0x80)) != 0);
+            vFlag = ((((registerA ^ ReadMemory(address)) & 0x80) != 0) && (((registerA ^ sum) & 0x80)) != 0);
             cFlag = sum > 0xff;
         }
 
@@ -442,9 +464,11 @@ namespace NES_Emulator.NES
         void SBC(ushort address)
         {
             int sub = registerA - ReadMemory(address) - (Convert.ToInt32(cFlag) ^ 1);
+            if (sub < 0)
+                sub = 0xff - sub + 1;
             registerA = (byte)sub;
             FlagNandZ(registerA);
-            vFlag = ((((registerA ^ ReadMemory(address)) & 0x80) != 0) && (((registerA ^ sub) & 0x80)) != 0);
+            vFlag = (!(((registerA ^ ReadMemory(address)) & 0x80) != 0) && (((registerA ^ sub) & 0x80)) != 0);
             cFlag = sub >= 0;
         }
 
