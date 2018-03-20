@@ -484,30 +484,6 @@ namespace NES_Emulator.NES
         }
 
         /// <summary>
-        /// スタックからAにポップアップ
-        /// サイクル数4
-        /// N: POPした値の最上位ビット
-        /// Z: POPした値が0であるか
-        /// </summary>
-        void PLA()
-        {
-            programCounter++;
-            registerS++;
-            registerA = cpuAddress[0x0100 + registerS];
-            FlagNandZ(registerA);
-        }
-
-        /// <summary>
-        /// スタックからPにポップアップ
-        /// </summary>
-        void PLP()
-        {
-            programCounter++;
-            registerS++;
-            SetRegisterP(cpuAddress[0x0100 + registerS]);
-        }
-
-        /// <summary>
         /// アドレスへジャンプする
         /// </summary>
         /// <param name="address">実効アドレス</param>
@@ -1011,11 +987,25 @@ namespace NES_Emulator.NES
                     Push(GetRegisterP());
                     programCounter++;
                     break;
+                /*
+                 * PLA
+                 * スタックからAにポップアップ
+                 * N: POPした値の最上位ビット
+                 * Z: POPした値が0であるか
+                 */
                 case 0x68:
-                    PLA();
+                    programCounter++;
+                    registerS++;
+                    registerA = cpuAddress[0x0100 + registerS];
+                    FlagNandZ(registerA);
                     break;
+                /*
+                 * スタックからPにポップアップ
+                 */
                 case 0x28:
-                    PLP();
+                    programCounter++;
+                    registerS++;
+                    SetRegisterP(cpuAddress[0x0100 + registerS]);
                     break;
                 case 0x4C:
                     JMP(Absolute());
