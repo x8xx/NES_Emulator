@@ -55,8 +55,9 @@ namespace NES_Emulator.NES
 
         public void DebugWriteValue(int count)
         {
-            if (count == 9143)
-                Debug.WriteLine("{0}, {1}", ReadMemory(6), ReadMemory(7));
+            if (programCounter == 0x817E)
+                Debug.WriteLine("-------------------------------------------------------------------------------------------");
+            Debug.WriteLine("2000 : {0}", ReadMemory(2000));
             Debug.Write(count + "=>");
             Debug.WriteLine("A: {0}, X: {1}, Y: {2}, PC: {3}", Convert.ToString(registerA, 16), Convert.ToString(registerX, 16), Convert.ToString(registerY, 16), Convert.ToString(programCounter, 16));
             Debug.WriteLine("N: {0}, V: {1}, B: {2}, I: {3}, Z: {4}, C: {5}", nFlag, vFlag, bFlag, iFlag, zFlag, cFlag);
@@ -129,6 +130,18 @@ namespace NES_Emulator.NES
             cFlag = ((value << 7) >> 7) == 1;
         }
 
+        /// <summary>
+        /// NMI割り込み
+        /// 上位バイト下位バイトレジスタPの順にPush
+        /// </summary>
+        public void Nmi()
+        {
+            Push((byte)(programCounter >> 8));
+            Push((byte)((programCounter << 8) >> 8));
+            Push(GetRegisterP());
+            programCounter = (ushort)(ReadMemory(0xFFFB) * 0x100 + ReadMemory(0xFFFA));
+        }
+
         /*------------------------------------------------------------
          * アドレッシング・モードここから
          * - 表記[N]はアドレスN
@@ -142,7 +155,7 @@ namespace NES_Emulator.NES
         {
             ushort address = ++programCounter;
             programCounter++;
-            Debug.WriteLine("[{0}]", address);
+            //Debug.WriteLine("[{0}]", address);
             return address;
         }
 
@@ -154,7 +167,7 @@ namespace NES_Emulator.NES
         {
             ushort address = ++programCounter;
             programCounter++;
-            Debug.WriteLine("[{0}]", cpuAddress[address]);
+            //Debug.WriteLine("[{0}]", cpuAddress[address]);
             return cpuAddress[address];
         }
 
@@ -166,7 +179,7 @@ namespace NES_Emulator.NES
         {
             ushort address = ++programCounter;
             programCounter++;
-            Debug.WriteLine("[{0}]", cpuAddress[address] + registerX);
+            //Debug.WriteLine("[{0}]", cpuAddress[address] + registerX);
             return (byte)(cpuAddress[address] + registerX);
         }
 
@@ -178,7 +191,7 @@ namespace NES_Emulator.NES
         {
             ushort address = ++programCounter;
             programCounter++;
-            Debug.WriteLine("[{0}]", cpuAddress[address] + registerY);
+            //Debug.WriteLine("[{0}]", cpuAddress[address] + registerY);
             return (byte)(cpuAddress[address] + registerY);
         }
 
@@ -191,7 +204,7 @@ namespace NES_Emulator.NES
         {
             ushort address = (ushort)(cpuAddress[programCounter + 2] * 0x100 + cpuAddress[programCounter + 1]);
             programCounter += 3;
-            Debug.WriteLine("[{0}]", address);
+            //Debug.WriteLine("[{0}]", address);
             return address;
         }
 
@@ -204,7 +217,7 @@ namespace NES_Emulator.NES
         {
             ushort address = (ushort)(cpuAddress[programCounter + 2] * 0x100 + cpuAddress[programCounter + 1]);
             programCounter += 3;
-            Debug.WriteLine("[{0}]", address + registerX);
+            //Debug.WriteLine("[{0}]", address + registerX);
             return (ushort)(address + registerX);
         }
 
@@ -217,7 +230,7 @@ namespace NES_Emulator.NES
         {
             ushort address = (ushort)(cpuAddress[programCounter + 2] * 0x100 + cpuAddress[programCounter + 1]);
             programCounter += 3;
-            Debug.WriteLine("[{0}]", address + registerY);
+            //Debug.WriteLine("[{0}]", address + registerY);
             return (ushort)(address + registerY);
         }
 
@@ -227,7 +240,7 @@ namespace NES_Emulator.NES
         /// <returns>実効アドレス</returns>
         ushort IndirectX()
         {
-            Debug.WriteLine("[{0}]", cpuAddress[ZeropageX()]);
+            //Debug.WriteLine("[{0}]", cpuAddress[ZeropageX()]);
             return (ushort)cpuAddress[ZeropageX()];
             /*????
              * byte tmp = (byte)(ReadMemory(programCounter) + registerX);
@@ -244,8 +257,10 @@ namespace NES_Emulator.NES
         /// <returns>実効アドレス</returns>
         ushort IndirectY()
         {
-            Debug.WriteLine("[{0}]", ReadMemory((ushort)(ReadMemory((ushort)(programCounter + 1)) + 1)) * 0x100 + ReadMemory(ReadMemory((ushort)(programCounter + 1))) + registerY);
-            return (ushort)(ReadMemory((ushort)(ReadMemory(programCounter++) + 1)) * 0x100 + ReadMemory(ReadMemory(programCounter++)) + registerY);
+            //Debug.WriteLine("[{0}]", ReadMemory((ushort)(ReadMemory((ushort)(programCounter + 1)) + 1)) * 0x100 + ReadMemory(ReadMemory((ushort)(programCounter + 1))) + registerY);
+            ushort address = (ushort)(ReadMemory((ushort)(ReadMemory((ushort)(programCounter + 1)) + 1)) * 0x100 + ReadMemory(ReadMemory((ushort)(programCounter + 1))) + registerY);
+            programCounter += 2;
+            return address;
             /*
             byte tmp = ReadMemory(programCounter);
             programCounter++;
@@ -370,8 +385,16 @@ namespace NES_Emulator.NES
         void Comparison(ushort address, ref byte register)
         {
             int tmp = register - ReadMemory(address);
+            if (tmp < 0)
+            {
+                tmp = 0xFF + tmp + 1;
+                cFlag = false;
+            }
+            else
+            {
+                cFlag = true;
+            }
             FlagNandZ(tmp);
-            cFlag = tmp >= 0;
         }
 
         /// <summary>
@@ -501,11 +524,6 @@ namespace NES_Emulator.NES
         void JMP(ushort address)
         {
             programCounter = address;
-        }
-
-        void RTI()
-        {
-
         }
 
         /// <summary>
@@ -1028,7 +1046,7 @@ namespace NES_Emulator.NES
                  * サブルーチンを呼び出す
                  * 元のPCを上位, 下位バイトの順にpushする
                  * この時保存するPCはJSRの最後のバイトアドレス
-                 * JSR サイクル数6
+                 * JSR
                  */
                 case 0x20:
                     ushort savePC = (ushort)(programCounter + 2);
@@ -1039,15 +1057,22 @@ namespace NES_Emulator.NES
                 /*
                  * サブルーチンから復帰する
                  * 下位, 上位バイトの順にpopする
-                 * RTS サイクル数6
+                 * RTS
                  */
                 case 0x60:
                     programCounter = (ushort)(cpuAddress[0x0100 + registerS + 2] * 0x0100 + cpuAddress[0x0100 + registerS + 1]);
                     registerS += 2;
                     programCounter++;
                     break;
+                /*
+                 * 割り込みハンドラから復帰
+                 * RTI
+                 */
                 case 0x40:
-                    RTI();
+                    registerS++;
+                    SetRegisterP(cpuAddress[0x0100 + registerS]);
+                    programCounter = (ushort)(ReadMemory((ushort)(0x100 + registerS + 2)) * 0x100 + ReadMemory((ushort)(0x100 + registerS + 1)));
+                    registerS += 2;
                     break;
                 case 0x90:
                     Branch(!cFlag);
@@ -1096,6 +1121,10 @@ namespace NES_Emulator.NES
                  * BRK
                  */
                 case 0x00:
+                    Push((byte)(programCounter >> 8));
+                    Push((byte)((programCounter << 8) >> 8));
+                    Push(GetRegisterP());
+                    programCounter = (ushort)(ReadMemory(0xFFFF) * 0x100 + ReadMemory(0xFFFE));
                     break;
                 /*
                  * 空の命令を実効
