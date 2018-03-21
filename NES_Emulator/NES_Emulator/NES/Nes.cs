@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Threading.Tasks;
 
 namespace NES_Emulator.NES
 {
@@ -7,8 +6,10 @@ namespace NES_Emulator.NES
     {
         public Cpu cpu { get; private set; }
         public Ppu ppu { get; private set; }
-        public Rom rom { get; private set; }
         public GameScreen gameScreen { get; private set; }
+
+        public int CharacterRimSize { get; set; }
+        public bool verticalMirror { get; set; }
 
         public Nes()
         {
@@ -23,32 +24,65 @@ namespace NES_Emulator.NES
         /// <param name="romBinary">Rom binary.</param>
         public bool PowerOn(byte[] romBinary)
         {
-            rom = new Rom(romBinary);
-            if (!rom.IsJudgmentNesRom()) return false;
+            if (!(romBinary[0] == 0x4E && romBinary[1] == 0x45 && romBinary[2] == 0x53 && romBinary[3] == 0x1A)) return false;
+            CharacterRimSize = romBinary[5] * 0x2000;
+            verticalMirror = (romBinary[6] % 2) != 0;
 
             cpu = new Cpu(this);
             ppu = new Ppu(this);
 
-            rom.SpliteRom();
-            for (int i = 0;i < rom.ProgramRom.Length;i++)
+            int count = 0x10;
+            for (int i = 0;i < romBinary[4] * 0x4000;i++, count++) //ProgramRom書き込み
             {
-                cpu.WriteMemory((ushort)(0x8000 + i), rom.ProgramRom[i]);
+                cpu.WriteMemory((ushort)(0x8000 + i), romBinary[count]);
             }
+
+            for (int i = 0; i < CharacterRimSize;i++, count++) //CharactarRom書き込み
+            {
+                ppu.WriteMemory((ushort)i, romBinary[count]);
+            }
+
             ppu.LoadSprite();
 
             gameScreen = new GameScreen();
             return true;
         }
 
+        int count = 0;
         /// <summary>
         /// CPUの命令を実効
         /// </summary>
         public void OperatingCpu()
         {
-            while(!gameScreen.notificationScreenUpdate)
+            while(!ppu.notificationScreenUpdate)
             {
+                if (count > 9130)
+                    //cpu.DebugWriteValue(count);
                 cpu.Execute();
+                count++;
             }
+        }
+
+        /// <summary>
+        /// CPUメモリを読み込む
+        /// </summary>
+        /// <returns>値</returns>
+        /// <param name="address">アドレス</param>
+        public byte ReadCpuMemory(ushort address)
+        {
+            return cpu.ReadMemory(address);
+        }
+
+
+        /// <summary>
+        /// nBitを取り出す
+        /// </summary>
+        /// <returns>The bit.</returns>
+        /// <param name="value">Value.</param>
+        /// <param name="n">n</param>
+        public static byte FetchBit(int value, int n)
+        {
+            return (byte)((value << 7 - n) >> 7);
         }
 
         //CPUサイクル数
@@ -71,47 +105,5 @@ namespace NES_Emulator.NES
             /*0xE0*/ 2, 6, 3, 8, 3, 3, 5, 5, 2, 2, 2, 2, 4, 4, 6, 6,
             /*0xF0*/ 2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,
         };
-
-        //パレットカラー
-        public static byte[][] paletteColors = new byte[][]
-        {
-            new byte[]{ 0x75, 0x75, 0x75 }, new byte[]{ 0x27, 0x1B, 0x8F }, 
-            new byte[]{ 0x00, 0x00, 0xAB }, new byte[]{ 0x47, 0x00, 0x9F }, 
-            new byte[]{ 0x8F, 0x00, 0x77 }, new byte[]{ 0xAB, 0x00, 0x13 }, 
-            new byte[]{ 0xA7, 0x00, 0x00 }, new byte[]{ 0x7F, 0x0B, 0x00 }, 
-            new byte[]{ 0x43, 0x2F, 0x00 }, new byte[]{ 0x00, 0x47, 0x00 }, 
-            new byte[]{ 0x00, 0x51, 0x00 }, new byte[]{ 0x00, 0x3F, 0x17 }, 
-            new byte[]{ 0x1B, 0x3F, 0x5F }, new byte[]{ 0x00, 0x00, 0x00 }, 
-            new byte[]{ 0x05, 0x05, 0x05 }, new byte[]{ 0x05, 0x05, 0x05 },
-
-            new byte[]{ 0xBC, 0xBC, 0xBC }, new byte[]{ 0x00, 0x73, 0xEF },
-            new byte[]{ 0x23, 0x3B, 0xEF }, new byte[]{ 0x83, 0x00, 0xF3 },
-            new byte[]{ 0xBF, 0x00, 0xBF }, new byte[]{ 0xE7, 0x00, 0x5B },
-            new byte[]{ 0xDB, 0x2B, 0x00 }, new byte[]{ 0xCB, 0x4F, 0x0F },
-            new byte[]{ 0x8B, 0x73, 0x00 }, new byte[]{ 0x00, 0x97, 0x00 },
-            new byte[]{ 0x00, 0xAB, 0x00 }, new byte[]{ 0x00, 0x93, 0x3B },
-            new byte[]{ 0x00, 0x83, 0x8B }, new byte[]{ 0x11, 0x11, 0x11 },
-            new byte[]{ 0x09, 0x09, 0x09 }, new byte[]{ 0x09, 0x09, 0x09 },
-
-            new byte[]{ 0xFF, 0xFF, 0xFF }, new byte[]{ 0x3F, 0xBF, 0xFF },
-            new byte[]{ 0x5F, 0x97, 0xFF }, new byte[]{ 0xA7, 0x8B, 0xFD },
-            new byte[]{ 0xF7, 0x7B, 0xFF }, new byte[]{ 0xFF, 0x77, 0xB7 },
-            new byte[]{ 0xFF, 0x77, 0x63 }, new byte[]{ 0xFF, 0x9B, 0x3B },
-            new byte[]{ 0xF3, 0xBF, 0x3F }, new byte[]{ 0x83, 0xD3, 0x13 },
-            new byte[]{ 0x4F, 0xDF, 0x4B }, new byte[]{ 0x58, 0xF8, 0x98 },
-            new byte[]{ 0x00, 0xEB, 0xDB }, new byte[]{ 0x66, 0x66, 0x66 },
-            new byte[]{ 0x0D, 0x0D, 0x0D }, new byte[]{ 0x0D, 0x0D, 0x0D },
-
-            new byte[]{ 0xFF, 0xFF, 0xFF }, new byte[]{ 0xAB, 0xE7, 0xFF },
-            new byte[]{ 0xC7, 0xD7, 0xFF }, new byte[]{ 0xD7, 0xCB, 0xFF },
-            new byte[]{ 0xFF, 0xC7, 0xFF }, new byte[]{ 0xFF, 0xC7, 0xDB },
-            new byte[]{ 0xFF, 0xBF, 0xB3 }, new byte[]{ 0xFF, 0xDB, 0xAB },
-            new byte[]{ 0xFF, 0xE7, 0xA3 }, new byte[]{ 0xE3, 0xFF, 0xA3 },
-            new byte[]{ 0xAB, 0xF3, 0xBF }, new byte[]{ 0xB3, 0xFF, 0xCF },
-            new byte[]{ 0x9F, 0xFF, 0xF3 }, new byte[]{ 0xDD, 0xDD, 0xDD },
-            new byte[]{ 0x11, 0x11, 0x11 }, new byte[]{ 0x11, 0x11, 0x11 }
-        };
-
-
     }
 }
