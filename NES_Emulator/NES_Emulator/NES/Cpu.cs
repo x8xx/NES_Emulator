@@ -55,7 +55,8 @@ namespace NES_Emulator.NES
 
         public void DebugWriteValue(int count)
         {
-            Debug.Write(count + "=>");
+            Debug.WriteLine(count + "=>");
+            Debug.WriteLine(ReadMemory(0x2000));
             Debug.WriteLine("A: {0}, X: {1}, Y: {2}, PC: {3}", Convert.ToString(registerA, 16), Convert.ToString(registerX, 16), Convert.ToString(registerY, 16), Convert.ToString(programCounter, 16));
             Debug.WriteLine("N: {0}, V: {1}, B: {2}, I: {3}, Z: {4}, C: {5}", nFlag, vFlag, bFlag, iFlag, zFlag, cFlag);
         }
@@ -76,7 +77,8 @@ namespace NES_Emulator.NES
         /// <param name="value">値</param>
         public void WriteMemory(ushort address, byte value)
         {
-            if ((address >= 0x2000 && address <= 0x2007) || address == 0x4014) nes.ppu.WritePpuRegister(address, value);
+            if ((address >= 0x2000 && address <= 0x2007) || address == 0x4014)
+                nes.ppu.WritePpuRegister(address, value);
             cpuAddress[address] = value;
         }
 
@@ -119,12 +121,12 @@ namespace NES_Emulator.NES
         /// <param name="value">P</param>
         void SetRegisterP(byte value)
         {
-            nFlag = (value >> 7) == 1;
-            vFlag = ((value << 1) >> 7) == 1;
-            bFlag = ((value << 3) >> 7) == 1;
-            iFlag = ((value << 5) >> 7) == 1;
-            zFlag = ((value << 6) >> 7) == 1;
-            cFlag = ((value << 7) >> 7) == 1;
+            nFlag = Nes.FetchBit(value, 7) != 0;
+            vFlag = Nes.FetchBit(value, 6) != 0;
+            bFlag = Nes.FetchBit(value, 4) != 0;
+            iFlag = Nes.FetchBit(value, 2) != 0;
+            zFlag = Nes.FetchBit(value, 1) != 0;
+            cFlag = Nes.FetchBit(value, 0) != 0;
         }
 
         /// <summary>
@@ -133,6 +135,7 @@ namespace NES_Emulator.NES
         /// </summary>
         public void Nmi()
         {
+            Debug.WriteLine("NMI");
             Push((byte)(programCounter >> 8));
             Push((byte)((programCounter << 8) >> 8));
             Push(GetRegisterP());
@@ -366,9 +369,10 @@ namespace NES_Emulator.NES
         /// <param name="address">実効アドレス</param>
         void BIT(ushort address)
         {
-            nFlag = (ReadMemory(address) >> 7) == 1;
-            vFlag = ((ReadMemory(address) << 1) >> 7) == 1;
-            zFlag = (registerA & ReadMemory(address)) == 0;
+            byte value = ReadMemory(address);
+            nFlag = Nes.FetchBit(value, 7) != 0;
+            vFlag = Nes.FetchBit(value, 6) != 0;
+            zFlag = (registerA & value) == 0;
         }
 
         /// <summary>
@@ -430,7 +434,7 @@ namespace NES_Emulator.NES
         /// </summary>
         void LSR(ref byte value)
         {
-            cFlag = ((value << 7) >> 7) == 1;
+            cFlag = Nes.FetchBit(value, 0) != 0;
             value >>= 1;
             FlagNandZ(value);
         }
@@ -455,9 +459,9 @@ namespace NES_Emulator.NES
         /// </summary>
         void ROL(ref byte value)
         {
-            byte tmp = (byte)(value >> 7);
+            byte tmp = Nes.FetchBit(value, 7);
             value = (byte)((value << 1) + Convert.ToInt32(cFlag));
-            cFlag = tmp == 1;
+            cFlag = tmp != 0;
             FlagNandZ(value);
         }
 
@@ -469,9 +473,9 @@ namespace NES_Emulator.NES
         /// </summary>
         void ROR(ref byte value)
         {
-            byte tmp = (byte)((value << 7) >> 7);
-            value = (byte)((value >> 1) + Convert.ToInt32(nFlag) * 0x80);
-            cFlag = tmp == 1;
+            byte tmp = Nes.FetchBit(value, 0);
+            value = (byte)((value >> 1) + Convert.ToInt32(cFlag) * 0x80);
+            cFlag = tmp != 0;
             FlagNandZ(value);
         }
 
@@ -553,7 +557,7 @@ namespace NES_Emulator.NES
         void FlagNandZ(int value)
         {
             zFlag = value == 0;
-            nFlag = (value >> 7) == 1;
+            nFlag = Nes.FetchBit(value, 7) != 0;
         }
 
         /// <summary>

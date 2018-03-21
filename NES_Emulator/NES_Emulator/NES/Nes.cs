@@ -48,7 +48,7 @@ namespace NES_Emulator.NES
             return true;
         }
 
-        int count = 0;
+        int coun = 0;
         /// <summary>
         /// CPUの命令を実効
         /// </summary>
@@ -56,10 +56,10 @@ namespace NES_Emulator.NES
         {
             while(!ppu.notificationScreenUpdate)
             {
-                if (count > 9130)
-                    //cpu.DebugWriteValue(count);
+                if (coun > 46000)
+                    //cpu.DebugWriteValue(coun);
                 cpu.Execute();
-                count++;
+                coun++;
             }
         }
 
@@ -82,7 +82,10 @@ namespace NES_Emulator.NES
         /// <param name="n">n</param>
         public static byte FetchBit(int value, int n)
         {
-            return (byte)((value << 7 - n) >> 7);
+            if ((value & (byte)Math.Pow(2, n)) != 0)
+                return 1;
+            else
+                return 0;
         }
 
         //CPUサイクル数

@@ -153,8 +153,8 @@ namespace NES_Emulator.NES
                 case 0x2000:
                     nmiInterrupt = Nes.FetchBit(value, 7) == 1;
                     spriteSize = Nes.FetchBit(value, 5) * 8 + 8;
-                    bgPatternTable = 512 * Nes.FetchBit(value, 4);
-                    spritePatternTable = 512 * Nes.FetchBit(value, 3);
+                    bgPatternTable = 256 * Nes.FetchBit(value, 4);
+                    spritePatternTable = 256 * Nes.FetchBit(value, 3);
                     ppuAddressInc = (byte)(Nes.FetchBit(value, 2) * 31 + 1);
                     break;
                  /* 0x2001 PPUMASK W コントロールレジスタ2 背景イネーブルなどPPUの設定
@@ -273,9 +273,9 @@ namespace NES_Emulator.NES
                 _totalPpuCycle = value;
                 if (_totalPpuCycle >= 341 && RenderLine < 240)
                 {
-                    if (isBgVisible)
+                    //if (isBgVisible)
                         BgRenderScreen(scrollOffsetX, scrollOffsetY);
-                    if (isSpriteVisible)
+                    //if (isSpriteVisible)
                         OamRenderScreen();
                     _totalPpuCycle -= 341;
                     nes.gameScreen.RenderScreen(screen, RenderLine - 1);
@@ -432,9 +432,13 @@ namespace NES_Emulator.NES
                 {
                     attrTablePaletteNumber = 3;
                 }
-                screen[i] = paletteColors[ppuAddress[0x3F00 //パレットに保存してる値がpaletteColorsの添字
-                                                         + 4 * GetPalette(ppuAddress[attrTableNumber], attrTablePaletteNumber) 
-                                                         + sprite[bgPatternTable + ppuAddress[nameTableNumber], spriteLine, column - (8 * (column / 8))]]];
+                //Debug.WriteLine("{0}, {1}, {2}, {3}", bgPatternTable + ppuAddress[nameTableNumber], spriteLine, column - (8 * (column / 8)), bgPatternTable);
+
+                int paletteCode = 4 * GetPalette(ppuAddress[attrTableNumber], attrTablePaletteNumber); //BGパレット
+                int colorNumber = sprite[bgPatternTable + ppuAddress[nameTableNumber], spriteLine, column - (8 * (column / 8))]; //配色番号
+                if (colorNumber == 0) //0x3F04, 0x3F08, 0x3F0Cのとき
+                    paletteCode = 0;
+                screen[i] = paletteColors[ppuAddress[0x3F00 + paletteCode + colorNumber]];
                 column++;
             }
             RenderLine++;
