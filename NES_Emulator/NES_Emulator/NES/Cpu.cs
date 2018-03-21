@@ -135,7 +135,6 @@ namespace NES_Emulator.NES
         /// </summary>
         public void Nmi()
         {
-            Debug.WriteLine("NMI");
             Push((byte)(programCounter >> 8));
             Push((byte)((programCounter << 8) >> 8));
             Push(GetRegisterP());
@@ -385,7 +384,8 @@ namespace NES_Emulator.NES
         /// <param name="address">実効アドレス</param>
         void Comparison(ushort address, ref byte register)
         {
-            byte tmp = (byte)(register - ReadMemory(address));
+            int tmp = register - ReadMemory(address);
+            Debug.WriteLine(tmp);
             FlagNandZ(tmp);
             cFlag = tmp >= 0;
         }
