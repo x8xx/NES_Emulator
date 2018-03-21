@@ -80,8 +80,13 @@ namespace NES_Emulator.NES
 
         int spriteSize; //スプライトのサイズ保存用 8 x spriteSizeとなる
 
+        int bgPatternTable; //BGのパターンテーブル
+        int spritePatternTable; //スプライトのパターンテーブル
+
         bool nmiInterrupt; //NMI割り込みを有効化するか
         bool verticalMirror; //true : 垂直ミラー, false : 水平ミラー
+        bool isSpriteVisible; //スプライトを表示するかしないか
+        bool isBgVisible; //BGを表示するかしないか
 
         byte oamAddr;  //0x2003 OAMADDR W スプライトメモリデータ 書き込むスプライト領域のアドレス
         ushort ppuAddr; //0x2006 PPUADDR W PPUメモリアドレス 書き込むメモリ領域のアドレス
@@ -109,9 +114,13 @@ namespace NES_Emulator.NES
             screen = new byte[61440][];
 
             spriteSize = 8;
+            bgPatternTable = 0;
+            spritePatternTable = 0;
 
             nmiInterrupt = false;
             verticalMirror = nes.verticalMirror;
+            isSpriteVisible = true;
+            isBgVisible = true;
 
             oamDataWriteCount = 0;
             scrollOffsetX = 0;
@@ -143,7 +152,9 @@ namespace NES_Emulator.NES
                  */
                 case 2000:
                     nmiInterrupt = (value >> 7) == 1;
-                    spriteSize = (value << 2) >> 7;
+                    spriteSize = (value << 2) >> 7 * 8 + 8;
+                    bgPatternTable = 512 * (value << 3) >> 7;
+                    spritePatternTable = 512 * (value << 4) >> 7;
                     ppuAddressInc = (byte)(((value << 5) >> 7) * 31 + 1);
                     break;
                  /* 0x2001 PPUMASK W コントロールレジスタ2 背景イネーブルなどPPUの設定
@@ -241,8 +252,6 @@ namespace NES_Emulator.NES
                     oamDataWriteCount = 0;
                     ppuAddrWriteCount = 0;
                     return (byte)(vblankFlag * 0x80);
-                case 0x2004:
-                    break;
                 case 0x2007:
                     break;
             }
@@ -264,6 +273,7 @@ namespace NES_Emulator.NES
                 if (_totalPpuCycle >= 341 && RenderLine < 240)
                 {
                     BgRenderScreen(scrollOffsetX, scrollOffsetY);
+                    OamRenderScreen();
                     _totalPpuCycle -= 341;
                     nes.gameScreen.RenderScreen(screen, RenderLine - 1);
                 }
@@ -291,6 +301,9 @@ namespace NES_Emulator.NES
                     notificationScreenUpdate = true;
                     _renderLine = 0;
                 }
+
+                if (RenderLine == 240 && nmiInterrupt)
+                    nes.cpu.Nmi();
             }
         }
 
@@ -418,7 +431,7 @@ namespace NES_Emulator.NES
                 }
                 screen[i] = paletteColors[ppuAddress[0x3F00 //パレットに保存してる値がpaletteColorsの添字
                                                          + 4 * GetPalette(ppuAddress[attrTableNumber], attrTablePaletteNumber) 
-                                                         + sprite[ppuAddress[nameTableNumber], spriteLine, column - (8 * (column / 8))]]];
+                                                         + sprite[bgPatternTable + ppuAddress[nameTableNumber], spriteLine, column - (8 * (column / 8))]]];
                 column++;
             }
             RenderLine++;
@@ -430,17 +443,43 @@ namespace NES_Emulator.NES
         /// </summary>
         void OamRenderScreen()
         {
-            for (int i = 0;i < 0xff;i++)
+            for (int i = 0; i < 0xff; i++)
             {
-                int x = oam[i, 3], y = oam[i, 0] + 1;
-                int spriteIndex;
-                bool verticalReverse = (oam[i, 2] >> 7) == 1;
-                bool horizontalReverse = ((oam[i, 2] << 1) >> 7) == 1;
-                bool front = ((oam[i, 2] << 2) >> 7) == 0;
-                int paletteNumber = ((oam[i, 2] << 6) >> 7) * 2 + ((oam[i, 2] << 7) >> 7);
-                if(front)
+                int x = oam[i, 3];
+                int y = oam[i, 0] + 1;
+                bool front = Nes.FetchBit(oam[i, 2], 5) == 0;
+                if (RenderLine == y && front && y < 240 && y >= 0 && x < 240 && x >= 0 && isSpriteVisible)
                 {
-                    
+                    bool verticalReverse = Nes.FetchBit(oam[i, 2], 7) == 1;
+                    bool horizontalReverse = Nes.FetchBit(oam[i, 2], 6) == 1;
+                    int paletteNumber = Nes.FetchBit(oam[i, 2], 1) * 2 + Nes.FetchBit(oam[i, 2], 0);
+                    int spriteTile = oam[0, 1];
+
+                    if (spriteSize != 8) //8x16
+                    {
+                        spriteTile = 2 * (spriteTile >> 1) + Nes.FetchBit(spriteTile, 0) * 256;
+                        for (int j = y * 256 + x * 8; j < y * 256 + x * 8 + 8; j++)
+                        {
+                            for (int k = 0; k < spriteSize; k++)
+                            {
+                                if (k < 8)
+                                    screen[j + k * 256] = paletteColors[ppuAddress[0x3F10 + 4 * paletteNumber + sprite[spriteTile, k, j - (y * 256 + x * 8)]]];
+                                if (k > 8)
+                                    screen[j + k * 256] = paletteColors[ppuAddress[0x3F10 + 4 * paletteNumber + sprite[spriteTile + 1, k - k % 2, j - (y * 256 + x * 8)]]];
+                            }
+                        }
+                    }
+                    else //8x8
+                    {
+                        spriteTile += spritePatternTable;
+                        for (int j = y * 256 + x * 8; j < y * 256 + x * 8 + 8; j++)
+                        {
+                            for (int k = 0; k < spriteSize; k++)
+                            {
+                                screen[j + k * 256] = paletteColors[ppuAddress[0x3F10 + 4 * paletteNumber + sprite[spriteTile, k, j - (y * 256 + x * 8)]]];
+                            }
+                        }
+                    }
                 }
             }
         }
