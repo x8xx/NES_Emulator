@@ -55,9 +55,6 @@ namespace NES_Emulator.NES
 
         public void DebugWriteValue(int count)
         {
-            if (programCounter == 0x817E)
-                Debug.WriteLine("-------------------------------------------------------------------------------------------");
-            Debug.WriteLine("2000 : {0}", ReadMemory(2000));
             Debug.Write(count + "=>");
             Debug.WriteLine("A: {0}, X: {1}, Y: {2}, PC: {3}", Convert.ToString(registerA, 16), Convert.ToString(registerX, 16), Convert.ToString(registerY, 16), Convert.ToString(programCounter, 16));
             Debug.WriteLine("N: {0}, V: {1}, B: {2}, I: {3}, Z: {4}, C: {5}", nFlag, vFlag, bFlag, iFlag, zFlag, cFlag);
@@ -384,17 +381,9 @@ namespace NES_Emulator.NES
         /// <param name="address">実効アドレス</param>
         void Comparison(ushort address, ref byte register)
         {
-            int tmp = register - ReadMemory(address);
-            if (tmp < 0)
-            {
-                tmp = 0xFF + tmp + 1;
-                cFlag = false;
-            }
-            else
-            {
-                cFlag = true;
-            }
+            byte tmp = (byte)(register - ReadMemory(address));
             FlagNandZ(tmp);
+            cFlag = tmp >= 0;
         }
 
         /// <summary>
@@ -497,9 +486,7 @@ namespace NES_Emulator.NES
         /// <param name="address">実効アドレス</param>
         void SBC(ushort address)
         {
-            int sub = registerA - ReadMemory(address) - (Convert.ToInt32(cFlag) ^ 1);
-            if (sub < 0)
-                sub = 0xff - sub + 1;
+            byte sub = (byte)(registerA - ReadMemory(address) - (Convert.ToInt32(cFlag) ^ 1));
             registerA = (byte)sub;
             FlagNandZ(registerA);
             vFlag = (!(((registerA ^ ReadMemory(address)) & 0x80) != 0) && (((registerA ^ sub) & 0x80)) != 0);
