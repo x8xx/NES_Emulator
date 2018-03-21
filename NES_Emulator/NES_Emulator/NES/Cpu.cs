@@ -55,8 +55,10 @@ namespace NES_Emulator.NES
 
         public void DebugWriteValue(int count)
         {
-            Debug.WriteLine(count);
-            Debug.WriteLine("A: {0}, X: {1}, Y: {2}, PC: {3}", registerA, registerX, registerY, Convert.ToString(programCounter, 16));
+            if (count == 9143)
+                Debug.WriteLine("{0}, {1}", ReadMemory(6), ReadMemory(7));
+            Debug.Write(count + "=>");
+            Debug.WriteLine("A: {0}, X: {1}, Y: {2}, PC: {3}", Convert.ToString(registerA, 16), Convert.ToString(registerX, 16), Convert.ToString(registerY, 16), Convert.ToString(programCounter, 16));
             Debug.WriteLine("N: {0}, V: {1}, B: {2}, I: {3}, Z: {4}, C: {5}", nFlag, vFlag, bFlag, iFlag, zFlag, cFlag);
         }
 
@@ -140,6 +142,7 @@ namespace NES_Emulator.NES
         {
             ushort address = ++programCounter;
             programCounter++;
+            Debug.WriteLine("[{0}]", address);
             return address;
         }
 
@@ -151,6 +154,7 @@ namespace NES_Emulator.NES
         {
             ushort address = ++programCounter;
             programCounter++;
+            Debug.WriteLine("[{0}]", cpuAddress[address]);
             return cpuAddress[address];
         }
 
@@ -162,6 +166,7 @@ namespace NES_Emulator.NES
         {
             ushort address = ++programCounter;
             programCounter++;
+            Debug.WriteLine("[{0}]", cpuAddress[address] + registerX);
             return (byte)(cpuAddress[address] + registerX);
         }
 
@@ -173,6 +178,7 @@ namespace NES_Emulator.NES
         {
             ushort address = ++programCounter;
             programCounter++;
+            Debug.WriteLine("[{0}]", cpuAddress[address] + registerY);
             return (byte)(cpuAddress[address] + registerY);
         }
 
@@ -185,6 +191,7 @@ namespace NES_Emulator.NES
         {
             ushort address = (ushort)(cpuAddress[programCounter + 2] * 0x100 + cpuAddress[programCounter + 1]);
             programCounter += 3;
+            Debug.WriteLine("[{0}]", address);
             return address;
         }
 
@@ -197,6 +204,7 @@ namespace NES_Emulator.NES
         {
             ushort address = (ushort)(cpuAddress[programCounter + 2] * 0x100 + cpuAddress[programCounter + 1]);
             programCounter += 3;
+            Debug.WriteLine("[{0}]", address + registerX);
             return (ushort)(address + registerX);
         }
 
@@ -209,6 +217,7 @@ namespace NES_Emulator.NES
         {
             ushort address = (ushort)(cpuAddress[programCounter + 2] * 0x100 + cpuAddress[programCounter + 1]);
             programCounter += 3;
+            Debug.WriteLine("[{0}]", address + registerY);
             return (ushort)(address + registerY);
         }
 
@@ -218,6 +227,7 @@ namespace NES_Emulator.NES
         /// <returns>実効アドレス</returns>
         ushort IndirectX()
         {
+            Debug.WriteLine("[{0}]", cpuAddress[ZeropageX()]);
             return (ushort)cpuAddress[ZeropageX()];
             /*????
              * byte tmp = (byte)(ReadMemory(programCounter) + registerX);
@@ -234,14 +244,15 @@ namespace NES_Emulator.NES
         /// <returns>実効アドレス</returns>
         ushort IndirectY()
         {
+            Debug.WriteLine("[{0}]", ReadMemory((ushort)(ReadMemory((ushort)(programCounter + 1)) + 1)) * 0x100 + ReadMemory(ReadMemory((ushort)(programCounter + 1))) + registerY);
             return (ushort)(ReadMemory((ushort)(ReadMemory(programCounter++) + 1)) * 0x100 + ReadMemory(ReadMemory(programCounter++)) + registerY);
-            //return (ushort)cpuAddress[Zeropage() + registerY];
-            /*????
-             * byte tmp = ReadMemory(programCounter);
+            /*
+            byte tmp = ReadMemory(programCounter);
             programCounter++;
             ushort tmp2 = ReadMemory(tmp);
             tmp++;
             tmp2 |= (ushort)(ReadMemory(tmp) << 8);
+            Debug.WriteLine(tmp2 + registerY);
             return (ushort)(tmp2 + registerY);*/
         }
 
