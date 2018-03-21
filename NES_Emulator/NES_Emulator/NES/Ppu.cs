@@ -150,12 +150,12 @@ namespace NES_Emulator.NES
                  * I : PPU アドレスインクリメント (0:+1, 1:+32) - VRAM 上で +1 は横方向、+32 は縦方向
                  * N : ネームテーブル (0:$2000, 1:$2400, 2:$2800, 3:$2C00)
                  */
-                case 2000:
-                    nmiInterrupt = (value >> 7) == 1;
-                    spriteSize = (value << 2) >> 7 * 8 + 8;
-                    bgPatternTable = 512 * (value << 3) >> 7;
-                    spritePatternTable = 512 * (value << 4) >> 7;
-                    ppuAddressInc = (byte)(((value << 5) >> 7) * 31 + 1);
+                case 0x2000:
+                    nmiInterrupt = Nes.FetchBit(value, 7) == 1;
+                    spriteSize = Nes.FetchBit(value, 5) * 8 + 8;
+                    bgPatternTable = 512 * Nes.FetchBit(value, 4);
+                    spritePatternTable = 512 * Nes.FetchBit(value, 3);
+                    ppuAddressInc = (byte)(Nes.FetchBit(value, 2) * 31 + 1);
                     break;
                  /* 0x2001 PPUMASK W コントロールレジスタ2 背景イネーブルなどPPUの設定
                  * bit 76543210
@@ -171,7 +171,8 @@ namespace NES_Emulator.NES
                  * G : 0:カラー, 1:モノクロ
                  */
                 case 0x2001:
-                    WriteMemory(address, value);
+                    isSpriteVisible = Nes.FetchBit(value, 4) != 1;
+                    isBgVisible = Nes.FetchBit(value, 3) != 1;
                     break;
                 //読み書きするOAMアドレスを指定
                 case 0x2003:
@@ -272,8 +273,10 @@ namespace NES_Emulator.NES
                 _totalPpuCycle = value;
                 if (_totalPpuCycle >= 341 && RenderLine < 240)
                 {
-                    BgRenderScreen(scrollOffsetX, scrollOffsetY);
-                    OamRenderScreen();
+                    if (isBgVisible)
+                        BgRenderScreen(scrollOffsetX, scrollOffsetY);
+                    if (isSpriteVisible)
+                        OamRenderScreen();
                     _totalPpuCycle -= 341;
                     nes.gameScreen.RenderScreen(screen, RenderLine - 1);
                 }
@@ -448,7 +451,7 @@ namespace NES_Emulator.NES
                 int x = oam[i, 3];
                 int y = oam[i, 0] + 1;
                 bool front = Nes.FetchBit(oam[i, 2], 5) == 0;
-                if (RenderLine == y && front && y < 240 && y >= 0 && x < 240 && x >= 0 && isSpriteVisible)
+                if (RenderLine == y && front && y < 240 && y >= 0 && x < 240 && x >= 0)
                 {
                     bool verticalReverse = Nes.FetchBit(oam[i, 2], 7) == 1;
                     bool horizontalReverse = Nes.FetchBit(oam[i, 2], 6) == 1;
