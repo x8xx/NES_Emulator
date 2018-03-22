@@ -100,6 +100,7 @@ namespace NES_Emulator.NES
 
         int _totalPpuCycle; //PPUの合計サイクル数
         int _renderLine; //次に描画するlineを保持
+        bool vBlank; //VBlank中か
 
         public bool notificationScreenUpdate { get; set; } //1フレーム更新通知
 
@@ -130,6 +131,7 @@ namespace NES_Emulator.NES
 
             TotalPpuCycle = 0;
             RenderLine = 0;
+            vBlank = false;
         }
 
 
@@ -227,6 +229,7 @@ namespace NES_Emulator.NES
                         oam[i, 2] = nes.ReadCpuMemory((ushort)(j + 2));
                         oam[i, 3] = nes.ReadCpuMemory((ushort)(j + 3));
                     }
+                    TotalPpuCycle += 1542; //514 * 3
                     break;
             }
         }
@@ -249,7 +252,7 @@ namespace NES_Emulator.NES
                  * 0x2005, 0x2006の書き込み状態がリセット
                  */
                 case 0x2002:
-                    int vblankFlag = (RenderLine > 239 && RenderLine < 262) ? 1 : 0;
+                    int vblankFlag = (vBlank) ? 1 : 0;
                     oamDataWriteCount = 0;
                     ppuAddrWriteCount = 0;
                     return (byte)(vblankFlag * 0x80);
@@ -273,12 +276,15 @@ namespace NES_Emulator.NES
                 _totalPpuCycle = value;
                 if (_totalPpuCycle >= 341 && RenderLine < 240)
                 {
-                    //if (isBgVisible)
+                    while(_totalPpuCycle >= 341)
+                    {
+                        //if (isBgVisible)
                         BgRenderScreen(scrollOffsetX, scrollOffsetY);
-                    //if (isSpriteVisible)
+                        //if (isSpriteVisible)
                         OamRenderScreen();
-                    _totalPpuCycle -= 341;
-                    nes.gameScreen.RenderScreen(screen, RenderLine - 1);
+                        _totalPpuCycle -= 341;
+                        nes.gameScreen.RenderScreen(screen, RenderLine - 1);
+                    }
                 }
                 else if (_totalPpuCycle >= 341 && RenderLine >= 240)
                 {
@@ -307,6 +313,10 @@ namespace NES_Emulator.NES
 
                 if (RenderLine == 240 && nmiInterrupt)
                     nes.cpu.Nmi();
+                else if (RenderLine == 240 && !nmiInterrupt)
+                    vBlank = true;
+                else if (RenderLine == 0)
+                    vBlank = false;
             }
         }
 
