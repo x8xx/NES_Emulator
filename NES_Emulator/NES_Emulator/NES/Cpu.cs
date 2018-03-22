@@ -56,7 +56,6 @@ namespace NES_Emulator.NES
         public void DebugWriteValue(int count)
         {
             Debug.WriteLine(count + "=>");
-            Debug.WriteLine(ReadMemory(0x2000));
             Debug.WriteLine("A: {0}, X: {1}, Y: {2}, PC: {3}", Convert.ToString(registerA, 16), Convert.ToString(registerX, 16), Convert.ToString(registerY, 16), Convert.ToString(programCounter, 16));
             Debug.WriteLine("N: {0}, V: {1}, B: {2}, I: {3}, Z: {4}, C: {5}", nFlag, vFlag, bFlag, iFlag, zFlag, cFlag);
         }
@@ -385,7 +384,6 @@ namespace NES_Emulator.NES
         void Comparison(ushort address, ref byte register)
         {
             int tmp = register - ReadMemory(address);
-            Debug.WriteLine(tmp);
             FlagNandZ(tmp);
             cFlag = tmp >= 0;
         }
@@ -1031,7 +1029,7 @@ namespace NES_Emulator.NES
                     JMP(Absolute());
                     break;
                 case 0x6C:
-                    JMP(cpuAddress[Absolute()]);
+                    JMP((ushort)(ReadMemory((ushort)(ReadMemory((ushort)(programCounter + 1)) + 1)) * 0x100 + ReadMemory(ReadMemory((ushort)(programCounter + 1)))));
                     break;
                 /*
                  * サブルーチンを呼び出す
