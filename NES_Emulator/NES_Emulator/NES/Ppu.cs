@@ -229,7 +229,6 @@ namespace NES_Emulator.NES
                         oam[i, 2] = nes.ReadCpuMemory((ushort)(j + 2));
                         oam[i, 3] = nes.ReadCpuMemory((ushort)(j + 3));
                     }
-                    TotalPpuCycle += 1542; //514 * 3
                     break;
             }
         }
@@ -253,6 +252,7 @@ namespace NES_Emulator.NES
                  */
                 case 0x2002:
                     int vblankFlag = (vBlank) ? 1 : 0;
+                    vBlank = false;
                     oamDataWriteCount = 0;
                     ppuAddrWriteCount = 0;
                     return (byte)(vblankFlag * 0x80);
@@ -273,7 +273,7 @@ namespace NES_Emulator.NES
             get { return _totalPpuCycle; }
             set
             {
-                _totalPpuCycle = value;
+                _totalPpuCycle += value;
                 if (_totalPpuCycle >= 341 && RenderLine < 240)
                 {
                     while(_totalPpuCycle >= 341)
@@ -290,6 +290,8 @@ namespace NES_Emulator.NES
                 {
                     RenderLine++;
                 }
+                Debug.WriteLine("PPU Cycle : " + _totalPpuCycle);
+                Debug.WriteLine("RenderLine : " + RenderLine);
             }
         }
 
