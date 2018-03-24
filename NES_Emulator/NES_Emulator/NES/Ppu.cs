@@ -84,6 +84,7 @@ namespace NES_Emulator.NES
         int spritePatternTable; //スプライトのパターンテーブル
 
         bool nmiInterrupt; //NMI割り込みを有効化するか
+        bool spriteHit; //0爆弾
         bool verticalMirror; //true : 垂直ミラー, false : 水平ミラー
         bool isSpriteVisible; //スプライトを表示するかしないか
         bool isBgVisible; //BGを表示するかしないか
@@ -108,7 +109,7 @@ namespace NES_Emulator.NES
         public Ppu(Nes nes)
         {
             ppuAddress = new byte[0x4000];
-            oam = new byte[0xff, 4];
+            oam = new byte[0x40, 4];
             this.nes = nes;
 
             sprite = new byte[nes.CharacterRimSize / 16, 8, 8];
@@ -222,7 +223,7 @@ namespace NES_Emulator.NES
                     break;
                 //OMAへDMA転送
                 case 0x4014:
-                    for (int i = 0, j = value * 0x100; i < 0xff; i++, j += 4)
+                    for (int i = 0, j = value * 0x100; i < 0x40; i++, j += 4)
                     {
                         oam[i, 0] = nes.ReadCpuMemory((ushort)j);
                         oam[i, 1] = nes.ReadCpuMemory((ushort)(j + 1));
@@ -252,10 +253,11 @@ namespace NES_Emulator.NES
                  */
                 case 0x2002:
                     int vblankFlag = (vBlank) ? 1 : 0;
+                    int sprite0Hit = (spriteHit) ? 1 : 0;
                     vBlank = false;
                     oamDataWriteCount = 0;
                     ppuAddrWriteCount = 0;
-                    return (byte)(vblankFlag * 0x80);
+                    return (byte)(vblankFlag * 0x80 + sprite0Hit * 0x40);
                 case 0x2007:
                     break;
             }
@@ -362,9 +364,13 @@ namespace NES_Emulator.NES
                 case 0x3F0C:
                     ppuAddress[address + 0x10] = value;
                     break;
+                case 0x3F10:
+                case 0x3F14:
+                case 0x3F18:
+                case 0x3F1C:
+                    ppuAddress[address - 0x10] = value;
+                    break;
             }
-            if (address == 0x3F00)
-                Debug.WriteLine("Address : {0}, Value : {1}", Convert.ToString(address, 16), value);
         }
 
 
@@ -446,16 +452,12 @@ namespace NES_Emulator.NES
                 {
                     attrTablePaletteNumber = 3;
                 }
-                //Debug.WriteLine("{0}, {1}, {2}, {3}", bgPatternTable + ppuAddress[nameTableNumber], spriteLine, column - (8 * (column / 8)), bgPatternTable);
 
                 int paletteCode = 4 * GetPalette(ppuAddress[attrTableNumber], attrTablePaletteNumber); //BGパレット
                 int colorNumber = sprite[bgPatternTable + ppuAddress[nameTableNumber], spriteLine, column - (8 * (column / 8))]; //配色番号
                 if (colorNumber == 0) //0x3F04, 0x3F08, 0x3F0Cのとき
                     paletteCode = 0;
-                //Debug.WriteLine("{0}, {1}", paletteCode, colorNumber);
                 screen[i] = paletteColors[ppuAddress[0x3F00 + paletteCode + colorNumber]];
-                //if (ppuAddress[0x3F00 + paletteCode + colorNumber] != 0)
-                    //Debug.WriteLine(Convert.ToString(ppuAddress[0x3F00 + paletteCode + colorNumber], 16));
                 column++;
             }
             RenderLine++;
@@ -467,41 +469,44 @@ namespace NES_Emulator.NES
         /// </summary>
         void OamRenderScreen()
         {
-            for (int i = 0; i < 0xff; i++)
+            for (int i = 0; i < 0x40; i++)
             {
-                int x = oam[i, 3];
-                int y = oam[i, 0] + 1;
-                bool front = Nes.FetchBit(oam[i, 2], 5) == 0;
-                if (RenderLine == y && front && y < 240 && y >= 0 && x < 240 && x >= 0)
-                {
-                    bool verticalReverse = Nes.FetchBit(oam[i, 2], 7) == 1;
-                    bool horizontalReverse = Nes.FetchBit(oam[i, 2], 6) == 1;
-                    int paletteNumber = Nes.FetchBit(oam[i, 2], 1) * 2 + Nes.FetchBit(oam[i, 2], 0);
-                    int spriteTile = oam[0, 1];
+                int x = oam[i, 3]; //x座標
+                int y = oam[i, 0] + 1; //y座標
+                bool front = Nes.FetchBit(oam[i, 2], 5) == 0; //前面
 
-                    if (spriteSize != 8) //8x16
+                if (front && y < 239 && x < 256)
+                {
+                    for (int j = 0; j < spriteSize; j++)
                     {
-                        spriteTile = 2 * (spriteTile >> 1) + Nes.FetchBit(spriteTile, 0) * 256;
-                        for (int j = y * 256 + x * 8; j < y * 256 + x * 8 + 8; j++)
+                        if (RenderLine == (y + j))
                         {
-                            for (int k = 0; k < spriteSize; k++)
+                            //spriteHit = false;
+                            if (i == 0 && spritePatternTable == 0) //0番スプライト
+                                spriteHit = true;
+                            int spriteTile = oam[i, 1];
+                            int patternTable = spritePatternTable;
+                            int paletteNumber = Nes.FetchBit(oam[i, 2], 1) * 2 + Nes.FetchBit(oam[i, 2], 0);
+
+                            if (spriteSize > 8) //8x16
                             {
-                                if (k < 8)
-                                    screen[j + k * 256] = paletteColors[ppuAddress[0x3F10 + 4 * paletteNumber + sprite[spriteTile, k, j - (y * 256 + x * 8)]]];
-                                if (k > 8)
-                                    screen[j + k * 256] = paletteColors[ppuAddress[0x3F10 + 4 * paletteNumber + sprite[spriteTile + 1, k - k % 2, j - (y * 256 + x * 8)]]];
+                                Debug.WriteLine("8x16");
+                                spriteTile = 2 * (spriteTile >> 1);
+                                patternTable = Nes.FetchBit(oam[i, 1], 0) * 0x1000;
                             }
-                        }
-                    }
-                    else //8x8
-                    {
-                        spriteTile += spritePatternTable;
-                        for (int j = y * 256 + x * 8; j < y * 256 + x * 8 + 8; j++)
-                        {
-                            for (int k = 0; k < spriteSize; k++)
+
+                            if (j >= 8) //8x16の下スプライト
+                                spriteTile += 1;
+
+                            for (int k = x; k <= x + 8 && k < 256; k++)
                             {
-                                screen[j + k * 256] = paletteColors[ppuAddress[0x3F10 + 4 * paletteNumber + sprite[spriteTile, k, j - (y * 256 + x * 8)]]];
+                                int paletteCode = 4 * paletteNumber; //スプライトパレット
+                                int colorNumber = sprite[spriteTile + patternTable, j, k - (k/8) * 8]; //配色番号
+                                if (colorNumber == 0) //0x3F10, 0x3F14, 0x3F18, 0x3F1Cは背景色
+                                    continue;
+                                screen[RenderLine * 256 + k] = paletteColors[ppuAddress[0x3F10 + paletteCode + colorNumber]];
                             }
+                            break;
                         }
                     }
                 }
