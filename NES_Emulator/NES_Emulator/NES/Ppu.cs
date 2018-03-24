@@ -290,8 +290,8 @@ namespace NES_Emulator.NES
                 {
                     RenderLine++;
                 }
-                Debug.WriteLine("PPU Cycle : " + _totalPpuCycle);
-                Debug.WriteLine("RenderLine : " + RenderLine);
+                /*Debug.WriteLine("PPU Cycle : " + _totalPpuCycle);
+                Debug.WriteLine("RenderLine : " + RenderLine);*/
             }
         }
 
@@ -363,6 +363,8 @@ namespace NES_Emulator.NES
                     ppuAddress[address + 0x10] = value;
                     break;
             }
+            if (address == 0x3F00)
+                Debug.WriteLine("Address : {0}, Value : {1}", Convert.ToString(address, 16), value);
         }
 
 
@@ -450,7 +452,10 @@ namespace NES_Emulator.NES
                 int colorNumber = sprite[bgPatternTable + ppuAddress[nameTableNumber], spriteLine, column - (8 * (column / 8))]; //配色番号
                 if (colorNumber == 0) //0x3F04, 0x3F08, 0x3F0Cのとき
                     paletteCode = 0;
+                //Debug.WriteLine("{0}, {1}", paletteCode, colorNumber);
                 screen[i] = paletteColors[ppuAddress[0x3F00 + paletteCode + colorNumber]];
+                //if (ppuAddress[0x3F00 + paletteCode + colorNumber] != 0)
+                    //Debug.WriteLine(Convert.ToString(ppuAddress[0x3F00 + paletteCode + colorNumber], 16));
                 column++;
             }
             RenderLine++;
@@ -539,6 +544,7 @@ namespace NES_Emulator.NES
                 }
                 count = 0;
             }
+            //TestGenerateSprite.PrintSprit(sprite);
         }
 
 

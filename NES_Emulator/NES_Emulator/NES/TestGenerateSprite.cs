@@ -60,7 +60,7 @@ namespace NES_Emulator.NES
             
         }
 
-        public void PrintSprit()
+        public static  void PrintSprit(byte[,,] sprite)
         {
             int count = 0;
             for (int k = 0; k < sprite.GetLength(0); k++)
@@ -70,14 +70,15 @@ namespace NES_Emulator.NES
                 {
                     for (int j = 0; j < 8; j++)
                     {
-                        if (sprite[k, count, j] != 0)
+                        /*if (sprite[k, count, j] != 0)
                         {
                             Debug.Write("■");
                         }
                         else
                         {
                             Debug.Write("□");
-                        }
+                        }*/
+                        Debug.Write(sprite[k, count, j]);
 
                     }
                     Debug.WriteLine("");

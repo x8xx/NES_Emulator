@@ -10,9 +10,9 @@ namespace NES_Emulator.iOS.FileManage
 {
     public class FileSelect : IFileSelect
     {
-        public string GetText()
+        public void GetText()
         {
-            return Environment.GetFolderPath(Environment.SpecialFolder.Personal);
+            Debug.WriteLine(Environment.GetFolderPath(Environment.SpecialFolder.Personal));
         }
 
         /// <summary>

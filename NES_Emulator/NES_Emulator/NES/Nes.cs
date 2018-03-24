@@ -56,8 +56,9 @@ namespace NES_Emulator.NES
         {
             while(!ppu.notificationScreenUpdate)
             {
-                if (coun > 46000)
+                if (coun > 9000)
                     //cpu.DebugWriteValue(coun);
+
                 cpu.Execute();
                 coun++;
             }
@@ -89,7 +90,7 @@ namespace NES_Emulator.NES
         }
 
         //CPUサイクル数
-        public static int[] cpuCycle = new int[]
+        public static int[] cpuCycle = 
         {
             /*0x00*/ 7, 6, 2, 8, 3, 3, 5, 5, 3, 2, 2, 2, 4, 4, 6, 6,
             /*0x10*/ 2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 6, 7,

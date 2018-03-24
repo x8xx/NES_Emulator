@@ -58,6 +58,8 @@ namespace NES_Emulator.NES
                 screen[i + 2] = table[j][0];
                 screen[i + 3] = 255;
             }
+            ScreenMemoryStream.Dispose();
+            ScreenMemoryStream = new MemoryStream(screen);
         }
     }
 }

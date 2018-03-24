@@ -76,8 +76,13 @@ namespace NES_Emulator.NES
         /// <param name="value">値</param>
         public void WriteMemory(ushort address, byte value)
         {
-            if ((address >= 0x2000 && address <= 0x2007) || address == 0x4014)
+            if (address >= 0x2000 && address <= 0x2007)
                 nes.ppu.WritePpuRegister(address, value);
+            if (address == 0x4014)
+            {
+                CycleInc(514);
+                nes.ppu.WritePpuRegister(address, value);
+            }
             cpuAddress[address] = value;
         }
 
@@ -97,7 +102,9 @@ namespace NES_Emulator.NES
         public void CycleInc(int cycle)
         {
             totalCpuCycle += cycle;
-            nes.ppu.TotalPpuCycle += 3 * cycle;
+            nes.ppu.TotalPpuCycle = 3 * cycle;
+            /*Debug.WriteLine("cycle : " + cycle);
+            Debug.WriteLine("Total : " + totalCpuCycle);*/
         }
 
         /// <summary>
@@ -238,15 +245,12 @@ namespace NES_Emulator.NES
         /// <returns>実効アドレス</returns>
         ushort IndirectX()
         {
-            //Debug.WriteLine("[{0}]", cpuAddress[ZeropageX()]);
-            return (ushort)cpuAddress[ZeropageX()];
-            /*????
-             * byte tmp = (byte)(ReadMemory(programCounter) + registerX);
+            byte tmp = (byte)(ReadMemory(programCounter) + registerX);
             programCounter++;
             ushort address = ReadMemory(tmp);
             tmp++;
             address |= (ushort)(ReadMemory(tmp) << 8);
-            return address;*/
+            return address;
         }
 
         /// <summary>

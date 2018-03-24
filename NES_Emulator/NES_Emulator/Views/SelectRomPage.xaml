@@ -3,7 +3,7 @@
     <ContentPage.Padding>
         <OnPlatform x:TypeArguments="Thickness" iOS="0, 20, 0, 0"/>
     </ContentPage.Padding>
-    <ListView ItemsSource="{Binding NesList}">
+    <ListView ItemsSource="{Binding NesList}" HasUnevenRows="true">
         <ListView.Behaviors>
             <b:ItemSelectedToCommandBehavior Command="{Binding LoadRom}"/>
         </ListView.Behaviors>

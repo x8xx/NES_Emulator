@@ -35,7 +35,7 @@ namespace NES_Emulator.ViewModels
         public SelectRomPageViewModel(INavigationService navigationService, IFileSelect fileSelect)
         {
             NesList = fileSelect.GetNesList();
-
+            Debug.WriteLine(Environment.GetFolderPath(Environment.SpecialFolder.Personal));
             LoadRom = new Command<RomFile>(x => 
             {
                 var navigationParameters = new NavigationParameters();

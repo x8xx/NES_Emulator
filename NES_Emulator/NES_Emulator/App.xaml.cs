@@ -24,14 +24,15 @@ namespace NES_Emulator
         {
             InitializeComponent();
 
-            await NavigationService.NavigateAsync("SelectRom");
+            await NavigationService.NavigateAsync("SelectRomPage");
         }
 
         protected override void RegisterTypes(IContainerRegistry containerRegistry)
         {
             containerRegistry.RegisterForNavigation<NavigationPage>();
             containerRegistry.RegisterForNavigation<MainPage>();
-            containerRegistry.RegisterForNavigation<SelectRom>();
+            containerRegistry.RegisterForNavigation<SelectRomPage>();
+            containerRegistry.RegisterForNavigation<GamePage>();
         }
     }
 }

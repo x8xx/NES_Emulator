@@ -32,6 +32,7 @@ namespace NES_Emulator.ViewModels
             nes.PowerOn(rom);
             Device.StartTimer(TimeSpan.FromMilliseconds(16), () =>
             {
+                //Debug.WriteLine("n");
                 GameScreen = ImageSource.FromStream(() => nes.gameScreen.ScreenMemoryStream);
                 nes.ppu.notificationScreenUpdate = false;
                 nes.OperatingCpu();

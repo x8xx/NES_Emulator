@@ -5,7 +5,7 @@ namespace NES_Emulator.FileManage
 {
     public interface IFileSelect
     {
-        string GetText();
+        void GetText();
         ObservableCollection<RomFile> GetNesList();
         byte[] GetNesRom(string path);
     }
