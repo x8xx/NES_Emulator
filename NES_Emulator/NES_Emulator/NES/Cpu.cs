@@ -83,6 +83,8 @@ namespace NES_Emulator.NES
                 CycleInc(514);
                 nes.ppu.WritePpuRegister(address, value);
             }
+			if (address == 0x4016 || address == 0x4017)
+				nes.controller.WriteIoRegister(address, value);
             cpuAddress[address] = value;
         }
 
@@ -96,6 +98,8 @@ namespace NES_Emulator.NES
         {
             if (address == 0x2002 || address == 0x2007)
                 return nes.ppu.ReadPpuRegister(address);
+			if (address == 0x4016 || address == 0x4017)
+				return (byte)(nes.controller.ReadIoRegister(address) ? 1 : 0);
             return cpuAddress[address];
         }
 
