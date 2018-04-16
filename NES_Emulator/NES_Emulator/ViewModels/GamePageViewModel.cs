@@ -12,7 +12,13 @@ namespace NES_Emulator.ViewModels
 {
     public class GamePageViewModel : BindableBase, INavigationAware
     {
+		public ICommand UpButtonCommand { get; }
+		public ICommand DownButtonCommand { get; }
+		public ICommand LeftButtonCommand { get; }
+		public ICommand RightButtonCommand { get; }
+
         byte[] rom;
+		Nes nes;
 
         ImageSource _gameScreen;
         public ImageSource GameScreen
@@ -23,16 +29,34 @@ namespace NES_Emulator.ViewModels
 
         public GamePageViewModel()
         {
+			UpButtonCommand = new DelegateCommand(() =>
+            {
+				nes.controller.InputKey(1, 4);
+            });
             
+			DownButtonCommand = new DelegateCommand(() =>
+            {
+                nes.controller.InputKey(1, 5);
+            });
+            
+			LeftButtonCommand = new DelegateCommand(() =>
+            {
+                nes.controller.InputKey(1, 6);
+            });
+            
+			RightButtonCommand = new DelegateCommand(() =>
+            {
+                nes.controller.InputKey(1, 7);
+            });
         }
 
         void PowerOn()
         {
-            Nes nes = new Nes();
+            nes = new Nes();
             nes.PowerOn(rom);
+
             Device.StartTimer(TimeSpan.FromMilliseconds(16), () =>
             {
-                //Debug.WriteLine("n");
                 GameScreen = ImageSource.FromStream(() => nes.gameScreen.ScreenMemoryStream);
                 nes.ppu.notificationScreenUpdate = false;
                 nes.OperatingCpu();

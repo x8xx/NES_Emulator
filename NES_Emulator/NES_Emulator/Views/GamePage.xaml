@@ -5,5 +5,9 @@
     </ContentPage.Padding>
     <StackLayout>
         <Image Source="{Binding GameScreen}" HeightRequest="400"/>
+        <Button Text="UP" Command="{Binding UpButtonCommand}"/>
+        <Button Text="DOWN" Command="{Binding DownButtonCommand}"/>
+        <Button Text="LEFT" Command="{Binding LeftButtonCommand}"/>
+        <Button Text="RIGHT" Command="{Binding RightButtonCommand}"/>
     </StackLayout>
 </ContentPage>
