@@ -69,6 +69,13 @@ namespace NES_Emulator.NES
          *          x座標
          */
         Oam[] oam;
+		class Oam
+        {
+            public byte y;
+            public byte x;
+            public byte tile;
+            public byte attr;
+        }
 
         byte[,,] sprite; //Sprite保存用
         byte[][] screen; //スクリーン
@@ -213,6 +220,7 @@ namespace NES_Emulator.NES
                             ppuScrollWriteCount = 0;
                             break;
                     }
+					Debug.WriteLine(scrollOffsetX+", "+ scrollOffsetY);
                     break;
                 //1回目の書き込みで上位バイト, 2回目の書き込みで下位バイトを設定
                 case 0x2006:
@@ -397,23 +405,27 @@ namespace NES_Emulator.NES
             int initialAttrTable = 0x23C0; //読み込む属性テーブル
             if (renderLine >= 240 && x < 256)
             {
+				Debug.WriteLine(2);
                 initialNameTable = 0x2800; //ネームテーブル2
                 initialAttrTable = 0x2BC0; //属性テーブル2
                 renderLine -= 240;
             }
             else if (renderLine < 240 && x >= 256)
             {
+				Debug.WriteLine(1);
                 initialNameTable = 0x2400; //ネームテーブル1
                 initialAttrTable = 0x27C0;  //属性テーブル1
                 x -= 256;
             }
             else if (renderLine >= 240 && x >= 256)
             {
+				Debug.WriteLine(3);
                 initialNameTable = 0x2C00; //ネームテーブル3
                 initialAttrTable = 0x2FC0; //属性テーブル3
                 x -= 256;
                 renderLine -= 240;
             }
+
 
             int nameTableNumber = initialNameTable + (renderLine / 8) * 32 + x / 8; //読み込むネームテーブルのアドレス
             int attrTableNumber = initialAttrTable + (renderLine / 32) * 8 + x / 32; //読み込む属性テーブルのアドレス
@@ -432,16 +444,16 @@ namespace NES_Emulator.NES
                 if ((column % 8) == 0 && column != 0)
                 {
                     nameTableNumber++;
-                    /*if (nameTableNumber == (initialNameTable + 0x20))
-                        nameTableNumber += 0x3E0;*/
+                    if (nameTableNumber == (initialNameTable + 0x20))
+                        nameTableNumber += 0x3E0;
                 }
 
                 //属性テーブルの加算
                 if ((column % 32) == 0 && column != 0)
                 {
                     attrTableNumber++;
-                    /*if (attrTableNumber == (initialAttrTable + 0x10))
-                        attrTableNumber += 0x3F0;*/
+                    if (attrTableNumber == (initialAttrTable + 0x10))
+                        attrTableNumber += 0x3F0;
                 }
 
                 if (unitRenderLine < 16 && unitColumn < 16)
@@ -499,7 +511,6 @@ namespace NES_Emulator.NES
                                     int colorNumber = sprite[spriteTile + patternTable, j, k - (k / 8) * 8]; //配色番号
                                     if (colorNumber == 0) //0x3F10, 0x3F14, 0x3F18, 0x3F1Cは背景色
                                         continue;
-									Debug.WriteLine(ppuAddress[0x3F12] + ", " + ppuAddress[0x3F13]);
                                     screen[RenderLine * 256 + k] = paletteColors[ppuAddress[0x3F10 + paletteCode + colorNumber]];
                                 }
                                 break;
@@ -607,13 +618,5 @@ namespace NES_Emulator.NES
             new byte[]{ 0x9F, 0xFF, 0xF3 }, new byte[]{ 0xDD, 0xDD, 0xDD },
             new byte[]{ 0x11, 0x11, 0x11 }, new byte[]{ 0x11, 0x11, 0x11 }
         };
-    }
-
-    public class Oam
-    {
-        public byte y;
-        public byte x;
-        public byte tile;
-        public byte attr;
     }
 }

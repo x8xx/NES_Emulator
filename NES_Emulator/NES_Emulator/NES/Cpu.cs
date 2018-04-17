@@ -34,7 +34,6 @@ namespace NES_Emulator.NES
          * 0xC000〜0xFFFF 0x4000 PRG-ROM
          */
         byte[] cpuAddress;
-        int totalCpuCycle; //合計サイクル数
 
         Nes nes;
         public Cpu(Nes nes)
@@ -50,14 +49,27 @@ namespace NES_Emulator.NES
             cFlag = false;
             registerS = 0xff;
             this.nes = nes;
-            totalCpuCycle = 0;
+        }
+
+		/// <summary>
+        /// PPUサイクルの加算
+        /// </summary>
+        /// <param name="cycle">Cycle.</param>
+        public void PpuCycleInc(int cycle)
+        {
+            nes.ppu.TotalPpuCycle = 3 * cycle;
+            /*Debug.WriteLine("cycle : " + cycle);
+            Debug.WriteLine("Total : " + totalCpuCycle);*/
         }
 
         public void DebugWriteValue(int count)
         {
-            Debug.WriteLine(count + "=>");
-            Debug.WriteLine("A: {0}, X: {1}, Y: {2}, PC: {3}", Convert.ToString(registerA, 16), Convert.ToString(registerX, 16), Convert.ToString(registerY, 16), Convert.ToString(programCounter, 16));
-            Debug.WriteLine("N: {0}, V: {1}, B: {2}, I: {3}, Z: {4}, C: {5}", nFlag, vFlag, bFlag, iFlag, zFlag, cFlag);
+			if (programCounter != 0x8037 && programCounter != 0x803A)
+			{
+				Debug.WriteLine(count + "=>");
+				Debug.WriteLine("A: {0}, X: {1}, Y: {2}, PC: {3}", Convert.ToString(registerA, 16), Convert.ToString(registerX, 16), Convert.ToString(registerY, 16), Convert.ToString(programCounter, 16));
+				Debug.WriteLine("N: {0}, V: {1}, B: {2}, I: {3}, Z: {4}, C: {5}", nFlag, vFlag, bFlag, iFlag, zFlag, cFlag);
+			}
         }
 
         public void CheckIrq()
@@ -80,7 +92,7 @@ namespace NES_Emulator.NES
                 nes.ppu.WritePpuRegister(address, value);
             if (address == 0x4014)
             {
-                CycleInc(514);
+                PpuCycleInc(514);
                 nes.ppu.WritePpuRegister(address, value);
             }
 			if (address == 0x4016 || address == 0x4017)
@@ -101,14 +113,6 @@ namespace NES_Emulator.NES
 			if (address == 0x4016 || address == 0x4017)
 				return (byte)(nes.controller.ReadIoRegister(address) ? 1 : 0);
             return cpuAddress[address];
-        }
-
-        public void CycleInc(int cycle)
-        {
-            totalCpuCycle += cycle;
-            nes.ppu.TotalPpuCycle = 3 * cycle;
-            /*Debug.WriteLine("cycle : " + cycle);
-            Debug.WriteLine("Total : " + totalCpuCycle);*/
         }
 
         /// <summary>
@@ -1131,7 +1135,28 @@ namespace NES_Emulator.NES
                     programCounter++;
                     break;
             }
-            CycleInc(Nes.cpuCycle[opcode]);
+            PpuCycleInc(cpuCycle[opcode]);
         }
+
+		//CPUサイクル数
+        public static int[] cpuCycle =
+        {
+            /*0x00*/ 7, 6, 2, 8, 3, 3, 5, 5, 3, 2, 2, 2, 4, 4, 6, 6,
+            /*0x10*/ 2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 6, 7,
+            /*0x20*/ 6, 6, 2, 8, 3, 3, 5, 5, 4, 2, 2, 2, 4, 4, 6, 6,
+            /*0x30*/ 2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 6, 7,
+            /*0x40*/ 6, 6, 2, 8, 3, 3, 5, 5, 3, 2, 2, 2, 3, 4, 6, 6,
+            /*0x50*/ 2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 6, 7,
+            /*0x60*/ 6, 6, 2, 8, 3, 3, 5, 5, 4, 2, 2, 2, 5, 4, 6, 6,
+            /*0x70*/ 2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 6, 7,
+            /*0x80*/ 2, 6, 2, 6, 3, 3, 3, 3, 2, 2, 2, 2, 4, 4, 4, 4,
+            /*0x90*/ 2, 6, 2, 6, 4, 4, 4, 4, 2, 4, 2, 5, 5, 4, 5, 5,
+            /*0xA0*/ 2, 6, 2, 6, 3, 3, 3, 3, 2, 2, 2, 2, 4, 4, 4, 4,
+            /*0xB0*/ 2, 5, 2, 5, 4, 4, 4, 4, 2, 4, 2, 4, 4, 4, 4, 4,
+            /*0xC0*/ 2, 6, 2, 8, 3, 3, 5, 5, 2, 2, 2, 2, 4, 4, 6, 6,
+            /*0xD0*/ 2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,
+            /*0xE0*/ 2, 6, 3, 8, 3, 3, 5, 5, 2, 2, 2, 2, 4, 4, 6, 6,
+            /*0xF0*/ 2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,
+        };
     }
 }
