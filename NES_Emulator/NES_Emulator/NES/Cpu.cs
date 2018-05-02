@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Diagnostics;
 using System;
+using System.Threading.Tasks;
 
 namespace NES_Emulator.NES
 {
@@ -57,7 +58,11 @@ namespace NES_Emulator.NES
         /// <param name="cycle">Cycle.</param>
         public void PpuCycleInc(int cycle)
         {
-            nes.ppu.TotalPpuCycle = 3 * cycle;
+			/*Task.Run(() =>
+			{
+				nes.ppu.TotalPpuCycle = 3 * cycle;
+			});*/
+			nes.ppu.TotalPpuCycle = 3 * cycle;
             /*Debug.WriteLine("cycle : " + cycle);
             Debug.WriteLine("Total : " + totalCpuCycle);*/
         }
@@ -88,15 +93,10 @@ namespace NES_Emulator.NES
         /// <param name="value">値</param>
         public void WriteMemory(ushort address, byte value)
         {
-            if (address >= 0x2000 && address <= 0x2007)
-                nes.ppu.WritePpuRegister(address, value);
+            if (address >= 0x2000 && address <= 0x401F)
+                nes.WriteIoRegister(address, value);
             if (address == 0x4014)
-            {
                 PpuCycleInc(514);
-                nes.ppu.WritePpuRegister(address, value);
-            }
-			if (address == 0x4016 || address == 0x4017)
-				nes.controller.WriteIoRegister(address, value);
             cpuAddress[address] = value;
         }
 
@@ -108,10 +108,8 @@ namespace NES_Emulator.NES
         /// <param name="address">アドレス</param>
         public byte ReadMemory(ushort address)
         {
-            if (address == 0x2002 || address == 0x2007)
-                return nes.ppu.ReadPpuRegister(address);
-			if (address == 0x4016 || address == 0x4017)
-				return (byte)(nes.controller.ReadIoRegister(address) ? 1 : 0);
+            if (address == 0x2002 || address == 0x2007 || address == 0x4016 || address == 0x4017)
+                return nes.ReadIoRegister(address);
             return cpuAddress[address];
         }
 

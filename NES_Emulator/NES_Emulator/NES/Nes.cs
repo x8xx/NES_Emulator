@@ -55,19 +55,22 @@ namespace NES_Emulator.NES
         {
             while(!ppu.notificationScreenUpdate)
             {
-				/*Task.Run(() =>
+				 /*Task.Run(() =>
 				{
 					//if (coun > 10000)
                         //cpu.DebugWriteValue(coun);
 					cpu.Execute();
                     coun++;
 				});*/
+				cpu.Execute();
+                coun++;
 				//if (coun > 10000)
                 //cpu.DebugWriteValue(coun);
-                cpu.Execute();
-                coun++;
+                //cpu.Execute();
+                //coun++;
             }
         }
+
 
         /// <summary>
         /// CPUメモリを読み込む
@@ -77,6 +80,35 @@ namespace NES_Emulator.NES
         public byte ReadCpuMemory(ushort address)
         {
             return cpu.ReadMemory(address);
+        }
+
+
+        /// <summary>
+        /// IOレジスタ書き込み
+        /// </summary>
+        /// <param name="address">Address.</param>
+        /// <param name="value">Value.</param>
+        public void WriteIoRegister(ushort address, byte value)
+        {
+            if ((address >= 0x2000 && address <= 0x2007) || address == 0x4014)
+                ppu.WritePpuRegister(address, value);
+            if (address == 0x4016 || address == 0x4017)
+                controller.WriteIoRegister(address, value);
+        }
+
+
+        /// <summary>
+        /// IOレジスタ読み込み
+        /// </summary>
+        /// <returns>The io register.</returns>
+        /// <param name="address">Address.</param>
+        public byte ReadIoRegister(ushort address)
+        {
+            if (address == 0x2002 || address == 0x2007)
+                return ppu.ReadPpuRegister(address);
+            if (address == 0x4016 || address == 0x4017)
+                return (byte)(controller.ReadIoRegister(address) ? 1 : 0);
+            return 0x00;
         }
 
 
