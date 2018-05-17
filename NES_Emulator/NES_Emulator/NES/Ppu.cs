@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace NES_Emulator.NES
 {
-    public class Ppu
+	public class Ppu : Unit
     {
         /*
          * PPUメモリマップ
@@ -106,10 +106,10 @@ namespace NES_Emulator.NES
         bool vBlank; //VBlank中か
 
         public bool notificationScreenUpdate { get; set; } //1フレーム更新通知
-
-        Nes nes;
-        public Ppu(Nes nes)
+        
+		public Ppu(Nes nes) : base(nes)
         {
+			unitName = GetType().Name;
             ppuAddress = new byte[0x4000];
             oam = new Oam[0x40];
             this.nes = nes;
@@ -135,6 +135,29 @@ namespace NES_Emulator.NES
             TotalPpuCycle = 0;
             RenderLine = 0;
             vBlank = false;
+        }
+
+
+		public override void Execute()
+        {
+			if (_totalPpuCycle >= 341 && RenderLine < 240)
+            {
+                while (_totalPpuCycle >= 341)
+                {
+                    //if (isBgVisible)
+                    BgRenderScreen(scrollOffsetX, scrollOffsetY);
+                    //if (isSpriteVisible)
+                    OamRenderScreen();
+                    RenderLine++;
+                    _totalPpuCycle -= 341;
+
+                    nes.gameScreen.RenderScreen(screen, RenderLine - 1);
+                }
+            }
+            else if (_totalPpuCycle >= 341 && RenderLine >= 240)
+            {
+                RenderLine++;
+            }
         }
 
         /// <summary>
@@ -220,7 +243,6 @@ namespace NES_Emulator.NES
                             ppuScrollWriteCount = 0;
                             break;
                     }
-					Debug.WriteLine(scrollOffsetX+", "+ scrollOffsetY);
                     break;
                 //1回目の書き込みで上位バイト, 2回目の書き込みで下位バイトを設定
                 case 0x2006:
@@ -245,9 +267,7 @@ namespace NES_Emulator.NES
                 //OMAへDMA転送
                 case 0x4014:
                     for (int i = 0, j = value * 0x100; i < 0x40; i++, j += 4)
-                    {
                         oam[i] = new Oam() { y = nes.ReadCpuMemory((ushort)j), tile = nes.ReadCpuMemory((ushort)(j + 1)), attr = nes.ReadCpuMemory((ushort)(j + 2)), x = nes.ReadCpuMemory((ushort)(j + 3)) };
-                    }
                     break;
             }
         }
@@ -294,7 +314,7 @@ namespace NES_Emulator.NES
             set
             {
                 _totalPpuCycle += value;
-                if (_totalPpuCycle >= 341 && RenderLine < 240)
+                /*if (_totalPpuCycle >= 341 && RenbugrLine < 240)
                 {
                     while (_totalPpuCycle >= 341)
                     {
@@ -304,13 +324,14 @@ namespace NES_Emulator.NES
                         OamRenderScreen();
 						RenderLine++;
                         _totalPpuCycle -= 341;
-                        nes.gameScreen.RenderScreen(screen, RenderLine - 1);
+
+						nes.gameScreen.RenderScreen(screen, RenderLine - 1);
                     }
                 }
                 else if (_totalPpuCycle >= 341 && RenderLine >= 240)
                 {
                     RenderLine++;
-                }
+                }*/
                 /*Debug.WriteLine("PPU Cycle : " + _totalPpuCycle);
                 Debug.WriteLine("RenderLine : " + RenderLine);*/
             }
@@ -331,6 +352,7 @@ namespace NES_Emulator.NES
                 if (_renderLine > 261)
                 {
                     notificationScreenUpdate = true;
+					nes.DrawingFrame = false;
                     _renderLine = 0;
                 }
 
@@ -405,21 +427,18 @@ namespace NES_Emulator.NES
             int initialAttrTable = 0x23C0; //読み込む属性テーブル
             if (renderLine >= 240 && x < 256)
             {
-				Debug.WriteLine(2);
                 initialNameTable = 0x2800; //ネームテーブル2
                 initialAttrTable = 0x2BC0; //属性テーブル2
                 renderLine -= 240;
             }
             else if (renderLine < 240 && x >= 256)
             {
-				Debug.WriteLine(1);
                 initialNameTable = 0x2400; //ネームテーブル1
                 initialAttrTable = 0x27C0;  //属性テーブル1
                 x -= 256;
             }
             else if (renderLine >= 240 && x >= 256)
             {
-				Debug.WriteLine(3);
                 initialNameTable = 0x2C00; //ネームテーブル3
                 initialAttrTable = 0x2FC0; //属性テーブル3
                 x -= 256;

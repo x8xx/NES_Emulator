@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace NES_Emulator.NES
 {
-    public class Cpu
+	public class Cpu : Unit
     {
         //レジスタ
         byte registerA; //8bit
@@ -35,10 +35,10 @@ namespace NES_Emulator.NES
          * 0xC000〜0xFFFF 0x4000 PRG-ROM
          */
         byte[] cpuAddress;
-
-        Nes nes;
-        public Cpu(Nes nes)
+        
+		public Cpu(Nes nes) : base(nes)
         {
+			unitName = GetType().Name;
             cpuAddress = new byte[0x10000];
             programCounter = 0x8000; //PC初期化
             //フラグ初期化
@@ -51,6 +51,7 @@ namespace NES_Emulator.NES
             registerS = 0xff;
             this.nes = nes;
         }
+        
 
 		/// <summary>
         /// PPUサイクルの加算
@@ -58,10 +59,6 @@ namespace NES_Emulator.NES
         /// <param name="cycle">Cycle.</param>
         public void PpuCycleInc(int cycle)
         {
-			/*Task.Run(() =>
-			{
-				nes.ppu.TotalPpuCycle = 3 * cycle;
-			});*/
 			nes.ppu.TotalPpuCycle = 3 * cycle;
             /*Debug.WriteLine("cycle : " + cycle);
             Debug.WriteLine("Total : " + totalCpuCycle);*/
@@ -595,7 +592,7 @@ namespace NES_Emulator.NES
         /// <summary>
         /// 命令を実効
         /// </summary>
-        public void Execute()
+		public override void Execute()
         {
             byte opcode = cpuAddress[programCounter];
             switch (opcode)
