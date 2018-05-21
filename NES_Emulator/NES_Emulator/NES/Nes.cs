@@ -1,17 +1,34 @@
 ﻿using System;
 using System.Threading.Tasks;
+using System.Collections.Generic;
+using System.Diagnostics;
+using Xamarin.Forms;
 
 namespace NES_Emulator.NES
 {
-    public class Nes
+	public class Nes
     {
-        public Cpu cpu { get; private set; }
+		Dictionary<string, List<bool>> processState;
+
+		public Cpu cpu { get; private set; }
         public Ppu ppu { get; private set; }
-        public GameScreen gameScreen { get; private set; }
-		public Controller controller { get; private set; }
+		public Controller ControllerInstance { get; private set; }
+  
+		public bool DrawingFrame { get; set; } 
 
         public int CharacterRimSize { get; set; }
         public bool verticalMirror { get; set; }
+
+		static Nes _nesInstance;
+		public static Nes NesInstance
+		{
+			get
+			{
+				if (_nesInstance == null)
+					_nesInstance = new Nes();
+				return _nesInstance;
+			}
+		}
 
         /// <summary>
         /// 電源ON
@@ -19,16 +36,16 @@ namespace NES_Emulator.NES
         /// </summary>
         /// <returns><c>true</c>, 起動成功 <c>false</c> 起動失敗</returns>
         /// <param name="romBinary">Rom binary.</param>
-        public bool PowerOn(byte[] romBinary)
+		public bool PowerOn(byte[] romBinary)
         {
-            if (!(romBinary[0] == 0x4E && romBinary[1] == 0x45 && romBinary[2] == 0x53 && romBinary[3] == 0x1A))
+            if (!(romBinary[0] == 0x4E && romBinary[1] == 0x45 && romBinary[2] == 0x53 && romBinary[3] == 0x1A)) //NESROMか判定
 				return false;
             CharacterRimSize = romBinary[5] * 0x2000;
             verticalMirror = (romBinary[6] % 2) != 0;
 
             cpu = new Cpu(this);
             ppu = new Ppu(this);
-			controller = new Controller();
+			ControllerInstance = new Controller();
 
             int count = 0x10;
             for (int i = 0;i < romBinary[4] * 0x4000;i++, count++) //ProgramRom書き込み
@@ -41,11 +58,71 @@ namespace NES_Emulator.NES
                 ppu.WriteMemory((ushort)i, romBinary[count]);
             }
 
-            ppu.LoadSprite();
-
-            gameScreen = new GameScreen();
+            ppu.LoadSprite(); //スプライト読み込み
+            
+            
+			processState = new Dictionary<string, List<bool>> { { "Cpu", null }, { "Ppu", null } };
+         
             return true;
         }
+
+		public async Task Run()
+		{
+			DrawingFrame = true;
+			Task ppuTask = Task.Run(() =>
+            {
+                ppu.Run();
+            });
+
+			Task cpuTask = Task.Run(() =>
+			{
+				cpu.Run();
+			});
+
+			await Task.WhenAll(ppuTask, cpuTask);
+			ppuTask.Dispose();
+			cpuTask.Dispose();
+		}
+      
+		public void ProcessStart(string unitName)
+		{
+			processState[unitName].Add(false);
+		}
+
+        /// <summary>
+        /// 処理が完了したことを登録
+        /// </summary>
+        /// <param name="unitName">Unit.</param>
+        /// <param name="count">Count.</param>
+		public void ProcessComplete(string unitName, int count)
+		{
+			//Debug.WriteLine(processState.ContainsKey(unitName));
+			processState[unitName][count] = true;
+			//Debug.WriteLine(5);
+		}
+
+		public void ProcessInitialize(string unitName)
+		{
+			processState[unitName] = new List<bool>();
+			processState[unitName].Add(true);
+		}
+
+        /// <summary>
+        /// タイミング同期調整
+        /// </summary>
+        /// <returns><c>true</c>, , <c>false</c> otherwise.</returns>
+        /// <param name="count">Count.</param>
+		public bool SyncControll(int count)
+		{
+			foreach(KeyValuePair<string, List<bool>> state in processState)
+			{
+				if (!state.Value[count])
+					return false;
+			}
+			foreach (KeyValuePair<string, List<bool>> state in processState)
+				state.Value.Add(false);
+			return true;
+		}
 
         int coun = 0;
         /// <summary>
@@ -55,23 +132,22 @@ namespace NES_Emulator.NES
         {
             while(!ppu.notificationScreenUpdate)
             {
-				 /*Task.Run(() =>
+				Task.Run(() =>
 				{
 					//if (coun > 10000)
                         //cpu.DebugWriteValue(coun);
 					cpu.Execute();
                     coun++;
-				});*/
-				cpu.Execute();
-                coun++;
+				});
+				/*cpu.Execute();
+                coun++;*/
 				//if (coun > 10000)
                 //cpu.DebugWriteValue(coun);
                 //cpu.Execute();
                 //coun++;
             }
         }
-
-
+              
         /// <summary>
         /// CPUメモリを読み込む
         /// </summary>
@@ -93,7 +169,7 @@ namespace NES_Emulator.NES
             if ((address >= 0x2000 && address <= 0x2007) || address == 0x4014)
                 ppu.WritePpuRegister(address, value);
             if (address == 0x4016 || address == 0x4017)
-                controller.WriteIoRegister(address, value);
+                ControllerInstance.WriteIoRegister(address, value);
         }
 
 
@@ -104,13 +180,22 @@ namespace NES_Emulator.NES
         /// <param name="address">Address.</param>
         public byte ReadIoRegister(ushort address)
         {
-            if (address == 0x2002 || address == 0x2007)
-                return ppu.ReadPpuRegister(address);
-            if (address == 0x4016 || address == 0x4017)
-                return (byte)(controller.ReadIoRegister(address) ? 1 : 0);
+            switch(address)
+            {
+                case 0x2002:
+                case 0x2007:
+                    return ppu.ReadPpuRegister(address);
+                case 0x4016:
+                case 0x4017:
+                    return (byte)(ControllerInstance.ReadIoRegister(address) ? 1 : 0);
+            }
             return 0x00;
         }
 
+        public void InputKey(int player, int key)
+        {
+            ControllerInstance.InputKey(player, key);
+        }
 
         /// <summary>
         /// nBitを取り出す

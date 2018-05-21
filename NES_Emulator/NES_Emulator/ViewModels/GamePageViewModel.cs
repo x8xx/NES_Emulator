@@ -4,9 +4,10 @@ using Prism.Mvvm;
 using Prism.Navigation;
 using Prism.Commands;
 using NES_Emulator.NES;
-using NES_Emulator.FileManage;
 using Xamarin.Forms;
 using System.Diagnostics;
+using System.Threading.Tasks;
+using System.IO;
 
 namespace NES_Emulator.ViewModels
 {
@@ -21,54 +22,56 @@ namespace NES_Emulator.ViewModels
 		Nes nes;
 
         ImageSource _gameScreen;
-        public ImageSource GameScreen
-        {
-            get { return _gameScreen; }
-            set { SetProperty(ref _gameScreen, value); }
-        }
+        public ImageSource GameScreen { get { return _gameScreen; } set { SetProperty(ref _gameScreen, value); } }
 
         public GamePageViewModel()
         {
+			nes = Nes.NesInstance;
 			UpButtonCommand = new DelegateCommand(() =>
             {
-				nes.controller.InputKey(1, 4);
+				nes.InputKey(1, 4);
             });
             
 			DownButtonCommand = new DelegateCommand(() =>
             {
-                nes.controller.InputKey(1, 5);
+                nes.InputKey(1, 5);
             });
             
 			LeftButtonCommand = new DelegateCommand(() =>
             {
-                nes.controller.InputKey(1, 6);
+                nes.InputKey(1, 6);
             });
             
 			RightButtonCommand = new DelegateCommand(() =>
             {
-                nes.controller.InputKey(1, 7);
+                nes.InputKey(1, 7);
             });
         }
 
-        void PowerOn()
+
+        /// <summary>
+        /// 電源ON
+        /// </summary>
+        async Task PowerOn()
         {
-            nes = new Nes();
-            nes.PowerOn(rom);
-
-            Device.StartTimer(TimeSpan.FromMilliseconds(16), () =>
+            if (nes.PowerOn(rom))
             {
-                GameScreen = ImageSource.FromStream(() => nes.gameScreen.ScreenMemoryStream);
-                nes.ppu.notificationScreenUpdate = false;
-                nes.OperatingCpu();
-                return true;
-            });
+				GameScreen = nes.ppu.GameScreen;
+				Device.StartTimer(TimeSpan.FromMilliseconds(16), () =>
+				{
+					nes.Run();
+					GameScreen = nes.ppu.GameScreen;
+					return true;
+				});
+            }
         }
+
 
         public void OnNavigatedFrom(NavigationParameters parameters)
         {
             
         }
-
+        
         public void OnNavigatedTo(NavigationParameters parameters)
         {
             rom = (byte[])parameters["rom"];

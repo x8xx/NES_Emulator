@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using System.IO;
+using Xamarin.Forms;
 
 namespace NES_Emulator.NES
 {
@@ -43,6 +45,11 @@ namespace NES_Emulator.NES
          */
         byte[] ppuAddress;
 
+		byte[] patternTable; //パターンテーブル
+		byte[] nameTable; //ネームテーブル
+		byte[] attrTable; //属性テーブル
+		byte[] palette; //パレット
+
         /* 
          * OAM (Object Attribute Memory)
          *  スプライト管理メモリ
@@ -69,12 +76,14 @@ namespace NES_Emulator.NES
          *          x座標
          */
         Oam[] oam;
+		Oam[] oamTable;
 		class Oam
         {
             public byte y;
             public byte x;
             public byte tile;
             public byte attr;
+			public int currentLine;
         }
 
         byte[,,] sprite; //Sprite保存用
@@ -105,6 +114,10 @@ namespace NES_Emulator.NES
         int _renderLine; //次に描画するlineを保持
         bool vBlank; //VBlank中か
 
+		const int headerSize = 54;
+        byte[] gameScreen;
+        public ImageSource GameScreen { get { return ImageSource.FromStream(() => new MemoryStream(gameScreen)); } }
+
         public bool notificationScreenUpdate { get; set; } //1フレーム更新通知
         
 		public Ppu(Nes nes) : base(nes)
@@ -113,6 +126,10 @@ namespace NES_Emulator.NES
             ppuAddress = new byte[0x4000];
             oam = new Oam[0x40];
             this.nes = nes;
+
+			nameTable = new byte[0xF00];
+			attrTable = new byte[0x100];
+			oamTable = new Oam[61440];
 
             sprite = new byte[nes.CharacterRimSize / 16, 8, 8];
             screen = new byte[61440][];
@@ -135,8 +152,46 @@ namespace NES_Emulator.NES
             TotalPpuCycle = 0;
             RenderLine = 0;
             vBlank = false;
+
+            //BMP画像生成
+			gameScreen = new byte[245814];
+            using (MemoryStream memoryStream = new MemoryStream(gameScreen))
+            {
+                using (BinaryWriter writer = new BinaryWriter(memoryStream))
+                {
+                    //BitmapFileHeader(14byte)
+                    writer.Write(new char[] { 'B', 'M' });  //シグネチャ
+                    writer.Write(245814); //ファイルサイズ
+                    writer.Write((short)0); //予約領域
+                    writer.Write((short)0); //予約領域
+                    writer.Write(headerSize); //ピクセルまでのオフセット
+
+                    //BitmapInfoHeader(40byte)
+                    writer.Write(40); //ヘッダーサイズ
+                    writer.Write(256); //width
+                    writer.Write(-240); //height
+                    writer.Write((short)1); //プレーン数
+                    writer.Write((short)32); //ピクセルあたりのビット数
+                    writer.Write(0); //圧縮形式
+                    writer.Write(245760); //画像サイズ
+                    writer.Write(0); //横方向の解像度
+                    writer.Write(0); //縦方向の解像度
+                    writer.Write(0); //色テーブルの色の数
+                    writer.Write(0); //重要な色の数
+                }
+            }
         }
 
+		public void RenderScreen(byte[][] table, int renderLine)
+        {
+            for (int i = headerSize + renderLine * 256 * 4, j = renderLine * 256; j < (renderLine + 1) * 256; i += 4, j++)
+            {
+				gameScreen[i] = table[j][2];
+				gameScreen[i + 1] = table[j][1];
+                gameScreen[i + 2] = table[j][0];
+				gameScreen[i + 3] = 255;
+            }
+        }
 
 		public override void Execute()
         {
@@ -145,13 +200,14 @@ namespace NES_Emulator.NES
                 while (_totalPpuCycle >= 341)
                 {
                     //if (isBgVisible)
-                    BgRenderScreen(scrollOffsetX, scrollOffsetY);
+                    //BgRenderScreen(scrollOffsetX, scrollOffsetY);
                     //if (isSpriteVisible)
-                    OamRenderScreen();
+                    //OamRenderScreen();
                     RenderLine++;
                     _totalPpuCycle -= 341;
 
-                    nes.gameScreen.RenderScreen(screen, RenderLine - 1);
+                    //RenderScreen(screen, RenderLine - 1);
+					BgRenderScreen(scrollOffsetX, scrollOffsetY);
                 }
             }
             else if (_totalPpuCycle >= 341 && RenderLine >= 240)
@@ -216,7 +272,7 @@ namespace NES_Emulator.NES
                     switch (oamDataWriteCount)
                     {
                         case 1:
-                            oam[oamAddr] = new Oam() { y = value };
+							oam[oamAddr] = new Oam() { y = value };
                             break;
                         case 2:
                             oam[oamAddr].tile = value;
@@ -226,6 +282,8 @@ namespace NES_Emulator.NES
                             break;
                         case 4:
                             oam[oamAddr].x = value;
+							oamTable[256 * (oam[oamAddr].y + 1) + value] = oam[oamAddr];
+							oamTable[256 * (oam[oamAddr].y + 1) + value].currentLine = 0;
                             oamDataWriteCount = 0;
                             break;
                     }
@@ -267,8 +325,16 @@ namespace NES_Emulator.NES
                 //OMAへDMA転送
                 case 0x4014:
                     for (int i = 0, j = value * 0x100; i < 0x40; i++, j += 4)
-                        oam[i] = new Oam() { y = nes.ReadCpuMemory((ushort)j), tile = nes.ReadCpuMemory((ushort)(j + 1)), attr = nes.ReadCpuMemory((ushort)(j + 2)), x = nes.ReadCpuMemory((ushort)(j + 3)) };
-                    break;
+					{
+						byte x = nes.ReadCpuMemory((ushort)(j + 3));
+						byte y = nes.ReadCpuMemory((ushort)j);
+						byte tile = nes.ReadCpuMemory((ushort)(j + 1));
+						byte attr = nes.ReadCpuMemory((ushort)(j + 2));
+						oamTable[x + 256 * y] = new Oam() { y = y, tile = tile, attr = attr, x = x, currentLine = 0 };
+						//oamTable[nes.ReadCpuMemory((ushort)(j + 3)) * (nes.ReadCpuMemory((ushort)j) + 1)] = new Oam() { y = nes.ReadCpuMemory((ushort)j), tile = nes.ReadCpuMemory((ushort)(j + 1)), attr = nes.ReadCpuMemory((ushort)(j + 2)), x = nes.ReadCpuMemory((ushort)(j + 3)) };
+                        //oam[i] = new Oam() { y = nes.ReadCpuMemory((ushort)j), tile = nes.ReadCpuMemory((ushort)(j + 1)), attr = nes.ReadCpuMemory((ushort)(j + 2)), x = nes.ReadCpuMemory((ushort)(j + 3)) };
+					}
+					break;
             }
         }
 
@@ -314,26 +380,6 @@ namespace NES_Emulator.NES
             set
             {
                 _totalPpuCycle += value;
-                /*if (_totalPpuCycle >= 341 && RenbugrLine < 240)
-                {
-                    while (_totalPpuCycle >= 341)
-                    {
-                        //if (isBgVisible)
-                        BgRenderScreen(scrollOffsetX, scrollOffsetY);
-                        //if (isSpriteVisible)
-                        OamRenderScreen();
-						RenderLine++;
-                        _totalPpuCycle -= 341;
-
-						nes.gameScreen.RenderScreen(screen, RenderLine - 1);
-                    }
-                }
-                else if (_totalPpuCycle >= 341 && RenderLine >= 240)
-                {
-                    RenderLine++;
-                }*/
-                /*Debug.WriteLine("PPU Cycle : " + _totalPpuCycle);
-                Debug.WriteLine("RenderLine : " + RenderLine);*/
             }
         }
 
@@ -455,8 +501,47 @@ namespace NES_Emulator.NES
             int spriteLine = renderLine % 8; //今読み込んでるラインのスプライトの列
             int unitRenderLine = renderLine - (32 * (renderLine / 32));
 
-            for (int i = renderLine * 256 + x; i < (renderLine + 1) * 256 + x; i++)
+			for (int i = renderLine * 256 + x, j = headerSize + renderLine * 256 * 4; i < (renderLine + 1) * 256 + x; i++, j+=4)
             {
+                if (oamTable[i - x] != null) //スプライト描画
+				{
+					int p = i - x;
+					for (int k = 0; k < 8;k++,i++, j+=4, column++)
+					{
+						int currentLine = oamTable[p].currentLine;
+						int spriteTile = oamTable[p].tile;
+                        int patternTable = spritePatternTable;
+                        int paletteNumber = Nes.FetchBit(oamTable[p].attr, 1) * 2 + Nes.FetchBit(oamTable[p].attr, 0);
+                        if (spriteSize > 8) //8x16
+                        {
+                            spriteTile = 2 * (spriteTile >> 1);
+                            patternTable = Nes.FetchBit(oamTable[p].tile, 0) * 0x1000;
+                        }
+						if (currentLine >= 8)
+						{
+							spriteTile += 1;
+							currentLine -= 8;
+						}
+						int spritePaletteCode = 4 * paletteNumber; //スプライトパレット
+						int spriteColorNumber = sprite[spriteTile + patternTable, currentLine, k]; //配色番号
+						if (spriteColorNumber == 0) //0x3F10, 0x3F14, 0x3F18, 0x3F1Cは背景色
+                            continue;
+						byte[] spritePaletteColor = paletteColors[ppuAddress[0x3F10 + spritePaletteCode + spriteColorNumber]];
+						gameScreen[j] = spritePaletteColor[2];
+                        gameScreen[j + 1] = spritePaletteColor[1];
+                        gameScreen[j + 2] = spritePaletteColor[0];
+						gameScreen[j + 3] = 255;
+					}
+					if (oamTable[p].currentLine + 1 < spriteSize)
+					{
+						oamTable[p].currentLine++;
+						oamTable[p + 256] = oamTable[p];
+					}
+					else
+						oamTable[p].currentLine = 0;
+					continue;
+				}
+
                 int unitColumn = column - (32 * (column / 32));
 
                 //ネームテーブルの加算
@@ -488,7 +573,12 @@ namespace NES_Emulator.NES
                 int colorNumber = sprite[bgPatternTable + ppuAddress[nameTableNumber], spriteLine, column - (8 * (column / 8))]; //配色番号
                 if (colorNumber == 0) //0x3F04, 0x3F08, 0x3F0Cのとき
                     paletteCode = 0;
-                screen[i] = paletteColors[ppuAddress[0x3F00 + paletteCode + colorNumber]];
+				//screen[i] = paletteColors[ppuAddress[0x3F00 + paletteCode + colorNumber]];
+				byte[] paletteColor = paletteColors[ppuAddress[0x3F00 + paletteCode + colorNumber]];
+				gameScreen[j] = paletteColor[2];
+				gameScreen[j + 1] = paletteColor[1];
+				gameScreen[j + 2] = paletteColor[0];
+				gameScreen[j + 3] = 255;
                 column++;
             }
         }
@@ -539,6 +629,18 @@ namespace NES_Emulator.NES
                 }
             }
         }
+
+        /// <summary>
+        /// 画面描画
+        /// </summary>
+        /// <param name="x">開始x地点</param>
+        /// <param name="y">開始y地点</param>
+        void Renderer(int x, int y)
+		{
+			int renderLine = RenderLine + y; //読み込む列
+            int initialNameTable = 0x2000; //読み込むネームテーブル
+            int initialAttrTable = 0x23C0; //読み込む属性テーブル
+		}
 
 
         /// <summary>

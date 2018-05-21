@@ -90,11 +90,5 @@ namespace NES_Emulator.NES
                 waitKey = true;
 			}
 		}
-
-		class Input
-		{
-			public bool isInput { get; set; }
-			public bool isRead { get; set; }
-		}
     }
 }

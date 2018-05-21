@@ -17,6 +17,8 @@
   <ItemGroup>
     <Compile Remove="NES\PpuRegister.cs" />
     <Compile Remove="Views\SelectRom.xaml.cs" />
+    <Compile Remove="NES\Rom.cs" />
+    <Compile Remove="NES\UI\GameScreen.cs" />
   </ItemGroup>
   <ItemGroup>
     <Compile Update="Views\SelectView.xaml.cs">
