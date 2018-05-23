@@ -206,8 +206,9 @@ namespace NES_Emulator.NES
                     RenderLine++;
                     _totalPpuCycle -= 341;
 
-                    //RenderScreen(screen, RenderLine - 1);
-					BgRenderScreen(scrollOffsetX, scrollOffsetY);
+					//RenderScreen(screen, RenderLine - 1);
+					RenderScreen(scrollOffsetX, scrollOffsetY);
+					//Renderer(scrollOffsetX, scrollOffsetY);
                 }
             }
             else if (_totalPpuCycle >= 341 && RenderLine >= 240)
@@ -462,11 +463,11 @@ namespace NES_Emulator.NES
 
 
         /// <summary>
-        /// BGスクリーンを1ライン描画
+        /// スクリーンを1ライン描画
         /// </summary>
         /// <param name="x">開始X座標</param>
         /// <param name="y">開始Y座標</param>
-        void BgRenderScreen(int x, int y)
+        void RenderScreen(int x, int y)
         {
             int renderLine = RenderLine + y; //読み込む列
             int initialNameTable = 0x2000; //読み込むネームテーブル
@@ -500,7 +501,6 @@ namespace NES_Emulator.NES
 
             int spriteLine = renderLine % 8; //今読み込んでるラインのスプライトの列
             int unitRenderLine = renderLine - (32 * (renderLine / 32));
-
 			for (int i = renderLine * 256 + x, j = headerSize + renderLine * 256 * 4; i < (renderLine + 1) * 256 + x; i++, j+=4)
             {
                 if (oamTable[i - x] != null) //スプライト描画
@@ -525,7 +525,7 @@ namespace NES_Emulator.NES
 						int spritePaletteCode = 4 * paletteNumber; //スプライトパレット
 						int spriteColorNumber = sprite[spriteTile + patternTable, currentLine, k]; //配色番号
 						if (spriteColorNumber == 0) //0x3F10, 0x3F14, 0x3F18, 0x3F1Cは背景色
-                            continue;
+							continue;
 						byte[] spritePaletteColor = paletteColors[ppuAddress[0x3F10 + spritePaletteCode + spriteColorNumber]];
 						gameScreen[j] = spritePaletteColor[2];
                         gameScreen[j + 1] = spritePaletteColor[1];
@@ -568,7 +568,7 @@ namespace NES_Emulator.NES
                     attrTablePaletteNumber = 2;
                 else if (unitRenderLine >= 16 && unitColumn >= 16)
                     attrTablePaletteNumber = 3;
-
+                    
                 int paletteCode = 4 * GetPalette(ppuAddress[attrTableNumber], attrTablePaletteNumber); //BGパレット
                 int colorNumber = sprite[bgPatternTable + ppuAddress[nameTableNumber], spriteLine, column - (8 * (column / 8))]; //配色番号
                 if (colorNumber == 0) //0x3F04, 0x3F08, 0x3F0Cのとき
@@ -582,6 +582,62 @@ namespace NES_Emulator.NES
                 column++;
             }
         }
+
+        void Renderer(int x, int y)
+		{
+			int renderLine = RenderLine + y;
+			for (int i = renderLine * 256 + x, j = headerSize + 256 * 4; i < (renderLine + 1) * 256; i += 8, j += 32)
+			{
+				RenderBackGroundSprite(i, renderLine, j);
+			}
+		}
+
+
+        /// <summary>
+        /// 横8pxずつ描画
+        /// </summary>
+        /// <param name="x">The x coordinate.</param>
+        /// <param name="y">The y coordinate.</param>
+        void RenderBackGroundSprite(int x, int y, int renderPosition)
+		{
+			int loadNameTable = 0x2000;
+			int loadAttrTable = 0x23C0;
+			if (x >= 256 && y < 240) { loadNameTable = 0x2400; loadAttrTable = 0x27C0; x -= 256; }
+			else if (x < 256 && y >= 240) { loadNameTable = 0x2800; loadAttrTable = 0x2BC0; y -= 240; }
+			else if (x >= 256 && y >= 240) { loadNameTable = 0x2C00; loadAttrTable = 0x2FC0; x -= 256; y -= 240; }
+            
+			loadNameTable += (y / 8) * 32 + x / 8;
+			loadAttrTable += (y / 32) * 8 + x / 32;
+			int attrTablePaletteNumber = 0;
+			int unitColumn = x - (32 * (x / 32));
+			int unitRenderLine = y - (32 * (y / 32));
+			if (unitRenderLine < 16 && unitColumn < 16)
+                attrTablePaletteNumber = 0;
+            else if (unitRenderLine < 16 && unitColumn >= 16)
+                attrTablePaletteNumber = 1;
+            else if (unitRenderLine >= 16 && unitColumn < 16)
+                attrTablePaletteNumber = 2;
+            else if (unitRenderLine >= 16 && unitColumn >= 16)
+                attrTablePaletteNumber = 3;
+
+			Debug.WriteLine(loadAttrTable);
+			int spriteLine = y % 8;
+			int paletteCode = 4 * GetPalette(ppuAddress[loadAttrTable], attrTablePaletteNumber); //BGパレット
+			int colorNumber = 0;
+			for (int i = 0, j = renderPosition; i < 8; i++, j += 4)
+			{
+				colorNumber = sprite[bgPatternTable + ppuAddress[loadNameTable], y, i]; //配色番号
+				if (colorNumber == 0) //0x3F04, 0x3F08, 0x3F0Cのとき
+                    paletteCode = 0;
+				byte[] paletteColor = paletteColors[ppuAddress[0x3F00 + paletteCode + colorNumber]];
+                gameScreen[j] = paletteColor[2];
+                gameScreen[j + 1] = paletteColor[1];
+                gameScreen[j + 2] = paletteColor[0];
+                gameScreen[j + 3] = 255;
+			}
+		}
+
+
 
 
         /// <summary>
@@ -628,20 +684,7 @@ namespace NES_Emulator.NES
                     }
                 }
             }
-        }
-
-        /// <summary>
-        /// 画面描画
-        /// </summary>
-        /// <param name="x">開始x地点</param>
-        /// <param name="y">開始y地点</param>
-        void Renderer(int x, int y)
-		{
-			int renderLine = RenderLine + y; //読み込む列
-            int initialNameTable = 0x2000; //読み込むネームテーブル
-            int initialAttrTable = 0x23C0; //読み込む属性テーブル
-		}
-
+        }      
 
         /// <summary>
         /// 4つあるパレットの内どのパレットを使うか決める
