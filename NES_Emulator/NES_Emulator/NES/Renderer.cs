@@ -2,12 +2,14 @@
 using System.IO;
 using System.Collections.Generic;
 using Xamarin.Forms;
+using System.Diagnostics;
 
 namespace NES_Emulator.NES
 {
     public class Renderer
     {
 		const int HEADER_SIZE = 54;
+		byte[] patternTable;
         byte[] gameScreen;
 		byte[] nameTable;
 		byte[] attrTable;
@@ -22,6 +24,7 @@ namespace NES_Emulator.NES
 			public bool VerticalReverse { get; set; } //水平反転
 			public bool Priority { get; set; } //優先度
 			public int Palette { get; set; } //パレット
+			public bool SpriteHit { get; set; }
         }
 
 		int screenOffset; //現在描画中のスクリーンの位置
@@ -30,11 +33,13 @@ namespace NES_Emulator.NES
 		public int ScrollOffsetX { get; set; }
 		public int ScrollOffsetY { get; set; }
 		public byte[] Palette { get; set; } //パレット
-		public byte[] PatternTable { get; set; } //パターンテーブルCharacterRom保存
 		public byte[,,] Sprite { get; set; } //スプライト保存用
 		public int BgPatternTable { get; set; } //BGのパターンテーブル
 		public int SpritePatternTable { get; set; } //スプライトのパターンテーブル
+		public bool IsBGVisible { get; set; } //BGを表示するかどうか
+		public bool IsSpriteVisible { get; set; } //スプライトを表示するかどうか
 		public int SpriteSize { get; set; } //スプライトサイズ
+		public bool SpriteHit { get; set; } //0爆弾
 		public Mirror ScreenMirror { get; set; }
         public ImageSource GameScreen { get { return ImageSource.FromStream(() => new MemoryStream(gameScreen)); } }
 
@@ -67,11 +72,14 @@ namespace NES_Emulator.NES
                     writer.Write(0); //重要な色の数
                 }
             }
-			PatternTable = new byte[0x2000];
+			SpriteSize = 8;
+			Palette = new byte[0x20];
+			patternTable = new byte[0x2000];
 			nameTable = new byte[3840];
 			attrTable = new byte[3840];
 			screenOffset = HEADER_SIZE;
 			oamTable = new Oam[0x40];
+			spriteRenderPosition = new Dictionary<int, Oam>();
         }
 
         /// <summary>
@@ -83,7 +91,7 @@ namespace NES_Emulator.NES
 		public void RenderScreen(int x, int y)
 		{
 			byte[] colors = RenderSprite(x, y);
-			for (int i = 2; i >= 0; i++)
+			for (int i = 2; i >= 0; i--)
 				gameScreen[screenOffset++] = colors[i];
 			gameScreen[screenOffset++] = 255;
 			if (screenOffset >= gameScreen.Length)
@@ -105,7 +113,7 @@ namespace NES_Emulator.NES
             int line = y % 8;
 
 			int paletteNumber = 4 * attrTable[tableAddress];
-			int colorNumber = Sprite[tableAddress, line, column];
+			int colorNumber = Sprite[nameTable[tableAddress], line, column];
 			if (colorNumber == 0)
 				paletteNumber = 0;
 			return paletteColors[Palette[paletteNumber + colorNumber]];
@@ -122,14 +130,15 @@ namespace NES_Emulator.NES
 		{
 			int position = x + y * 256;
 			if (!spriteRenderPosition.ContainsKey(position))
-				RenderBackGround(x, y);
+				return RenderBackGround(x, y);
 
 			int spritePaletteCode = 4 * spriteRenderPosition[position].Palette; //スプライトパレット
+			Debug.WriteLine("{0}, {1}, {2", spriteRenderPosition[position].TileID, spriteRenderPosition[position].PatternTable);
 			int spriteColorNumber = Sprite[spriteRenderPosition[position].TileID + spriteRenderPosition[position].PatternTable, 
 			                               spriteRenderPosition[position].Y, spriteRenderPosition[position].X]; //配色番号
 			if (spriteColorNumber == 0) //0x3F10, 0x3F14, 0x3F18, 0x3F1Cは背景色
 				return RenderBackGround(x, y);
-			return paletteColors[Palette[spritePaletteCode + spriteColorNumber]];
+			return paletteColors[Palette[0x10 + spritePaletteCode + spriteColorNumber]];
 		}
 
 
@@ -235,10 +244,10 @@ namespace NES_Emulator.NES
             }
 
 			int tileID = tile;
-			int patternTable = SpritePatternTable;
+			int patternTableNumber = SpritePatternTable;
 			if (SpriteSize > 8)
 			{
-				patternTable = Nes.FetchBit(tileID, 0) * 0x1000;
+				patternTableNumber = Nes.FetchBit(tileID, 0) * 0x1000;
 				tileID = 2 * (tileID >> 1);
 			}
 			bool verticalReverse = Nes.FetchBit(attr, 7) == 1;
@@ -250,7 +259,7 @@ namespace NES_Emulator.NES
 				X = x,
 				Y = y,
 				TileID = tileID,
-				PatternTable = patternTable,
+				PatternTable = patternTableNumber,
 				HorizontalReverse = horizontalReverse,
 				VerticalReverse = verticalReverse,
 				Priority = priority,
@@ -273,6 +282,39 @@ namespace NES_Emulator.NES
 						spriteRenderPosition[i + j].TileID++;
 				}
 			}
+		}
+
+		/// <summary>
+        /// スプライトを読み込み保存
+        /// </summary>
+        public void LoadSprite()
+        {
+            int count = 0;
+            for (int i = 0; i < Sprite.GetLength(0); i++)
+            {
+                for (int j = i * 16; j < i * 16 + 8; j++)
+                {
+					string highOrder = BinaryNumberConversion(patternTable[j + 8]);
+					string lowOrder = BinaryNumberConversion(patternTable[j]);
+                    for (int l = 0; l < 8; l++)
+                    {
+                        Sprite[i, count, l] = (byte)(int.Parse(highOrder[l].ToString()) * 2 + int.Parse(lowOrder[l].ToString()));
+                    }
+                    count++;
+                }
+                count = 0;
+            }
+        }
+
+
+        /// <summary>
+        /// パターンテーブルへの書き込み
+        /// </summary>
+        /// <param name="offset">Offset.</param>
+        /// <param name="value">Value.</param>
+		public void WritePatternTable(int offset, byte value)
+		{
+			patternTable[offset] = value;
 		}
 
 

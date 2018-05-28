@@ -44,7 +44,7 @@ namespace NES_Emulator.NES
             verticalMirror = (romBinary[6] % 2) != 0;
 
             cpu = new Cpu(this);
-            ppu = new Ppu(this);
+			ppu = new Ppu(this, romBinary[5] * 0x2000);
 			ControllerInstance = new Controller();
 
             int count = 0x10;

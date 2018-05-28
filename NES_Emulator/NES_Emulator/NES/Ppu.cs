@@ -101,6 +101,7 @@ namespace NES_Emulator.NES
         bool isBgVisible; //BGを表示するかしないか
 
         byte oamAddr;  //0x2003 OAMADDR W スプライトメモリデータ 書き込むスプライト領域のアドレス
+		byte[] tempOamData; //0, y 1, tile 2, attr 3, x
         ushort ppuAddr; //0x2006 PPUADDR W PPUメモリアドレス 書き込むメモリ領域のアドレス
         byte ppuData; //0x2007 PPUDATA RW PPUメモリデータ PPUメモリ領域のデータ
         int oamDataWriteCount; //0x2004のwrite回数を記録
@@ -116,11 +117,13 @@ namespace NES_Emulator.NES
 
 		const int headerSize = 54;
         byte[] gameScreen;
-        public ImageSource GameScreen { get { return ImageSource.FromStream(() => new MemoryStream(gameScreen)); } }
+        //public ImageSource GameScreen { get { return ImageSource.FromStream(() => new MemoryStream(gameScreen)); } }
+		public ImageSource GameScreen { get { return renderer.GameScreen; } }
+		Renderer renderer;
 
         public bool notificationScreenUpdate { get; set; } //1フレーム更新通知
         
-		public Ppu(Nes nes) : base(nes)
+		public Ppu(Nes nes, int characterRomSize) : base(nes)
         {
 			unitName = GetType().Name;
             ppuAddress = new byte[0x4000];
@@ -130,8 +133,7 @@ namespace NES_Emulator.NES
 			nameTable = new byte[0xF00];
 			attrTable = new byte[0x100];
 			oamTable = new Oam[61440];
-
-            sprite = new byte[nes.CharacterRimSize / 16, 8, 8];
+            
             screen = new byte[61440][];
 
             spriteSize = 8;
@@ -144,6 +146,7 @@ namespace NES_Emulator.NES
             isBgVisible = true;
 
             oamDataWriteCount = 0;
+			tempOamData = new byte[4];
             scrollOffsetX = 0;
             scrollOffsetY = 0;
             ppuAddrWriteCount = 0;
@@ -180,18 +183,24 @@ namespace NES_Emulator.NES
                     writer.Write(0); //重要な色の数
                 }
             }
+
+			renderer = new Renderer();
+			renderer.Sprite = new byte[nes.CharacterRimSize / 16, 8, 8];
         }
 
-		public void RenderScreen(byte[][] table, int renderLine)
+		public void RenderScreen(/*byte[][] table, int renderLine*/)
         {
-            for (int i = headerSize + renderLine * 256 * 4, j = renderLine * 256; j < (renderLine + 1) * 256; i += 4, j++)
+			/*for (int i = headerSize + renderLine * 256 * 4, j = renderLine * 256; j < (renderLine + 1) * 256; i += 4, j++)
             {
 				gameScreen[i] = table[j][2];
 				gameScreen[i + 1] = table[j][1];
                 gameScreen[i + 2] = table[j][0];
 				gameScreen[i + 3] = 255;
-            }
+            }*/
+			for (int x = 0; x < 256; x++)
+				renderer.RenderScreen(x, RenderLine - 1);
         }
+
 
 		public override void Execute()
         {
@@ -199,16 +208,12 @@ namespace NES_Emulator.NES
             {
                 while (_totalPpuCycle >= 341)
                 {
-                    //if (isBgVisible)
-                    //BgRenderScreen(scrollOffsetX, scrollOffsetY);
-                    //if (isSpriteVisible)
-                    //OamRenderScreen();
                     RenderLine++;
                     _totalPpuCycle -= 341;
-
 					//RenderScreen(screen, RenderLine - 1);
-					RenderScreen(scrollOffsetX, scrollOffsetY);
+					//RenderScreen(scrollOffsetX, scrollOffsetY);
 					//Renderer(scrollOffsetX, scrollOffsetY);
+					RenderScreen();
                 }
             }
             else if (_totalPpuCycle >= 341 && RenderLine >= 240)
@@ -241,10 +246,11 @@ namespace NES_Emulator.NES
                  */
                 case 0x2000:
                     nmiInterrupt = Nes.FetchBit(value, 7) == 1;
-                    spriteSize = Nes.FetchBit(value, 5) * 8 + 8;
-                    bgPatternTable = 256 * Nes.FetchBit(value, 4);
-                    spritePatternTable = 256 * Nes.FetchBit(value, 3);
                     ppuAddressInc = (byte)(Nes.FetchBit(value, 2) * 31 + 1);
+
+					renderer.SpriteSize = Nes.FetchBit(value, 5) * 8 + 8;
+					renderer.BgPatternTable = 256 * Nes.FetchBit(value, 4);
+					renderer.SpritePatternTable = 256 * Nes.FetchBit(value, 3);
                     break;
                 /* 0x2001 PPUMASK W コントロールレジスタ2 背景イネーブルなどPPUの設定
                 * bit 76543210
@@ -259,9 +265,9 @@ namespace NES_Emulator.NES
                 * m : 画面左端 8px で BG クリッピング (0:有効, 1:無効)
                 * G : 0:カラー, 1:モノクロ
                 */
-                case 0x2001:
-                    isSpriteVisible = Nes.FetchBit(value, 4) != 1;
-                    isBgVisible = Nes.FetchBit(value, 3) != 1;
+                case 0x2001:               
+					renderer.IsSpriteVisible = Nes.FetchBit(value, 4) != 1;
+					renderer.IsBGVisible = Nes.FetchBit(value, 3) != 1;
                     break;
                 //読み書きするOAMアドレスを指定
                 case 0x2003:
@@ -270,35 +276,25 @@ namespace NES_Emulator.NES
                 //0x2003で指定したOAMアドレスにy, tile, attr, xの順に書き込む
                 case 0x2004:
                     oamDataWriteCount++;
-                    switch (oamDataWriteCount)
-                    {
-                        case 1:
-							oam[oamAddr] = new Oam() { y = value };
-                            break;
-                        case 2:
-                            oam[oamAddr].tile = value;
-                            break;
-                        case 3:
-                            oam[oamAddr].attr = value;
-                            break;
-                        case 4:
-                            oam[oamAddr].x = value;
-							oamTable[256 * (oam[oamAddr].y + 1) + value] = oam[oamAddr];
-							oamTable[256 * (oam[oamAddr].y + 1) + value].currentLine = 0;
-                            oamDataWriteCount = 0;
-                            break;
-                    }
+					tempOamData[oamDataWriteCount - 1] = value;
+					if (oamDataWriteCount == 4)
+					{
+						renderer.WriteOamTable(oamAddr, tempOamData[3], tempOamData[0], tempOamData[1], tempOamData[2]);
+						oamDataWriteCount = 0;
+					}
                     break;
                 //1回目の書き込みでx, 2回目の書き込みでyのスクロールオフセットを指定
                 case 0x2005:
                     switch (ppuScrollWriteCount)
                     {
                         case 0:
-                            scrollOffsetX = value;
+							//scrollOffsetX = value;
+							renderer.ScrollOffsetX = value;
                             ppuScrollWriteCount++;
                             break;
                         case 1:
-                            scrollOffsetY = value;
+							//scrollOffsetY = value;
+							renderer.ScrollOffsetY = value;
                             ppuScrollWriteCount = 0;
                             break;
                     }
@@ -327,13 +323,14 @@ namespace NES_Emulator.NES
                 case 0x4014:
                     for (int i = 0, j = value * 0x100; i < 0x40; i++, j += 4)
 					{
-						byte x = nes.ReadCpuMemory((ushort)(j + 3));
+						/*byte x = nes.ReadCpuMemory((ushort)(j + 3));
 						byte y = nes.ReadCpuMemory((ushort)j);
 						byte tile = nes.ReadCpuMemory((ushort)(j + 1));
 						byte attr = nes.ReadCpuMemory((ushort)(j + 2));
-						oamTable[x + 256 * y] = new Oam() { y = y, tile = tile, attr = attr, x = x, currentLine = 0 };
-						//oamTable[nes.ReadCpuMemory((ushort)(j + 3)) * (nes.ReadCpuMemory((ushort)j) + 1)] = new Oam() { y = nes.ReadCpuMemory((ushort)j), tile = nes.ReadCpuMemory((ushort)(j + 1)), attr = nes.ReadCpuMemory((ushort)(j + 2)), x = nes.ReadCpuMemory((ushort)(j + 3)) };
-                        //oam[i] = new Oam() { y = nes.ReadCpuMemory((ushort)j), tile = nes.ReadCpuMemory((ushort)(j + 1)), attr = nes.ReadCpuMemory((ushort)(j + 2)), x = nes.ReadCpuMemory((ushort)(j + 3)) };
+						oamTable[x + 256 * y] = new Oam() { y = y, tile = tile, attr = attr, x = x, currentLine = 0 };*/
+						Debug.WriteLine(1);
+						renderer.WriteOamTable(i, nes.ReadCpuMemory((ushort)(j + 3)), nes.ReadCpuMemory((ushort)j), nes.ReadCpuMemory((ushort)(j + 1)), nes.ReadCpuMemory((ushort)(j + 2)));
+						Debug.WriteLine(2);
 					}
 					break;
             }
@@ -420,367 +417,44 @@ namespace NES_Emulator.NES
         /// <param name="value">値</param>
         public void WriteMemory(ushort address, byte value)
         {
-            ppuAddress[address] = value;
-            if (verticalMirror) //垂直ミラー
-            {
-                if (address >= 0x2000 && address <= 0x27FF)
-                {
-                    ppuAddress[address + 0x800] = value;
-                }
-                else if (address >= 0x2800 && address <= 0x2FFF)
-                {
-                    ppuAddress[address - 0x800] = value;
-                }
-            }
-            else //水平ミラー
-            {
-                if ((address >= 0x2000 && address <= 0x23FF) || (address >= 0x2800 && address <= 0x2BFF))
-                {
-                    ppuAddress[address + 0x400] = value;
-                }
-                else if ((address >= 0x2400 && address <= 0x27FF) || (address >= 0x2C00 && address <= 0x2FFF))
-                {
-                    ppuAddress[address - 0x400] = value;
-                }
-            }
-
-            switch (address) //パレットミラー
-            {
-                case 0x3F00:
-                case 0x3F04:
-                case 0x3F08:
-                case 0x3F0C:
-                    ppuAddress[address + 0x10] = value;
-                    break;
-                case 0x3F10:
-                case 0x3F14:
-                case 0x3F18:
-                case 0x3F1C:
-                    ppuAddress[address - 0x10] = value;
-                    break;
-            }
-        }
-
-
-        /// <summary>
-        /// スクリーンを1ライン描画
-        /// </summary>
-        /// <param name="x">開始X座標</param>
-        /// <param name="y">開始Y座標</param>
-        void RenderScreen(int x, int y)
-        {
-            int renderLine = RenderLine + y; //読み込む列
-            int initialNameTable = 0x2000; //読み込むネームテーブル
-            int initialAttrTable = 0x23C0; //読み込む属性テーブル
-            if (renderLine >= 240 && x < 256)
-            {
-                initialNameTable = 0x2800; //ネームテーブル2
-                initialAttrTable = 0x2BC0; //属性テーブル2
-                renderLine -= 240;
-            }
-            else if (renderLine < 240 && x >= 256)
-            {
-                initialNameTable = 0x2400; //ネームテーブル1
-                initialAttrTable = 0x27C0;  //属性テーブル1
-                x -= 256;
-            }
-            else if (renderLine >= 240 && x >= 256)
-            {
-                initialNameTable = 0x2C00; //ネームテーブル3
-                initialAttrTable = 0x2FC0; //属性テーブル3
-                x -= 256;
-                renderLine -= 240;
-            }
-
-
-            int nameTableNumber = initialNameTable + (renderLine / 8) * 32 + x / 8; //読み込むネームテーブルのアドレス
-            int attrTableNumber = initialAttrTable + (renderLine / 32) * 8 + x / 32; //読み込む属性テーブルのアドレス
-
-            int attrTablePaletteNumber = 0; //パレット内の読み込む色の番号
-            int column = x; //現在の行
-
-            int spriteLine = renderLine % 8; //今読み込んでるラインのスプライトの列
-            int unitRenderLine = renderLine - (32 * (renderLine / 32));
-			for (int i = renderLine * 256 + x, j = headerSize + renderLine * 256 * 4; i < (renderLine + 1) * 256 + x; i++, j+=4)
-            {
-                if (oamTable[i - x] != null) //スプライト描画
-				{
-					int p = i - x;
-					for (int k = 0; k < 8;k++,i++, j+=4, column++)
-					{
-						int currentLine = oamTable[p].currentLine;
-						int spriteTile = oamTable[p].tile;
-                        int patternTable = spritePatternTable;
-                        int paletteNumber = Nes.FetchBit(oamTable[p].attr, 1) * 2 + Nes.FetchBit(oamTable[p].attr, 0);
-                        if (spriteSize > 8) //8x16
-                        {
-                            spriteTile = 2 * (spriteTile >> 1);
-                            patternTable = Nes.FetchBit(oamTable[p].tile, 0) * 0x1000;
-                        }
-						if (currentLine >= 8)
-						{
-							spriteTile += 1;
-							currentLine -= 8;
-						}
-						int spritePaletteCode = 4 * paletteNumber; //スプライトパレット
-						int spriteColorNumber = sprite[spriteTile + patternTable, currentLine, k]; //配色番号
-						if (spriteColorNumber == 0) //0x3F10, 0x3F14, 0x3F18, 0x3F1Cは背景色
-							continue;
-						byte[] spritePaletteColor = paletteColors[ppuAddress[0x3F10 + spritePaletteCode + spriteColorNumber]];
-						gameScreen[j] = spritePaletteColor[2];
-                        gameScreen[j + 1] = spritePaletteColor[1];
-                        gameScreen[j + 2] = spritePaletteColor[0];
-						gameScreen[j + 3] = 255;
-					}
-					if (oamTable[p].currentLine + 1 < spriteSize)
-					{
-						oamTable[p].currentLine++;
-						oamTable[p + 256] = oamTable[p];
-					}
-					else
-						oamTable[p].currentLine = 0;
-					continue;
-				}
-
-                int unitColumn = column - (32 * (column / 32));
-
-                //ネームテーブルの加算
-                if ((column % 8) == 0 && column != 0)
-                {
-                    nameTableNumber++;
-                    if (nameTableNumber == (initialNameTable + 0x20))
-                        nameTableNumber += 0x3E0;
-                }
-
-                //属性テーブルの加算
-                if ((column % 32) == 0 && column != 0)
-                {
-                    attrTableNumber++;
-                    if (attrTableNumber == (initialAttrTable + 0x10))
-                        attrTableNumber += 0x3F0;
-                }
-
-                if (unitRenderLine < 16 && unitColumn < 16)
-                    attrTablePaletteNumber = 0;
-                else if (unitRenderLine < 16 && unitColumn >= 16)
-                    attrTablePaletteNumber = 1;
-                else if (unitRenderLine >= 16 && unitColumn < 16)
-                    attrTablePaletteNumber = 2;
-                else if (unitRenderLine >= 16 && unitColumn >= 16)
-                    attrTablePaletteNumber = 3;
-                    
-                int paletteCode = 4 * GetPalette(ppuAddress[attrTableNumber], attrTablePaletteNumber); //BGパレット
-                int colorNumber = sprite[bgPatternTable + ppuAddress[nameTableNumber], spriteLine, column - (8 * (column / 8))]; //配色番号
-                if (colorNumber == 0) //0x3F04, 0x3F08, 0x3F0Cのとき
-                    paletteCode = 0;
-				//screen[i] = paletteColors[ppuAddress[0x3F00 + paletteCode + colorNumber]];
-				byte[] paletteColor = paletteColors[ppuAddress[0x3F00 + paletteCode + colorNumber]];
-				gameScreen[j] = paletteColor[2];
-				gameScreen[j + 1] = paletteColor[1];
-				gameScreen[j + 2] = paletteColor[0];
-				gameScreen[j + 3] = 255;
-                column++;
-            }
-        }
-
-        void Renderer(int x, int y)
-		{
-			int renderLine = RenderLine + y;
-			for (int i = renderLine * 256 + x, j = headerSize + 256 * 4; i < (renderLine + 1) * 256; i += 8, j += 32)
+			if (address >= 0 && address <= 0x1FFF)
+				renderer.WritePatternTable(address, value);
+			else if ((address >= 0x2000 && address <= 0x23BF) || (address >= 0x2400 && address <= 0x27BF)
+				|| (address >= 0x2800 && address <= 0x2BBF) || (address >= 0x2C00 && address <= 0x2FBF))
+				renderer.WriteNameTable(address, value);
+			else if ((address >= 0x23C0 && address <= 0x23FF) || (address >= 0x27C0 && address <= 0x27FF)
+					 || (address >= 0x2BC0 && address <= 0x2BFF) || (address >= 0x2FC0 && address <= 0x2FFF))
+				renderer.WriteAttrTable(address, value);
+			else if (address >= 0x3F00 && address <= 0x3F1F)
 			{
-				RenderBackGroundSprite(i, renderLine, j);
-			}
-		}
-
-
-        /// <summary>
-        /// 横8pxずつ描画
-        /// </summary>
-        /// <param name="x">The x coordinate.</param>
-        /// <param name="y">The y coordinate.</param>
-        void RenderBackGroundSprite(int x, int y, int renderPosition)
-		{
-			int loadNameTable = 0x2000;
-			int loadAttrTable = 0x23C0;
-			if (x >= 256 && y < 240) { loadNameTable = 0x2400; loadAttrTable = 0x27C0; x -= 256; }
-			else if (x < 256 && y >= 240) { loadNameTable = 0x2800; loadAttrTable = 0x2BC0; y -= 240; }
-			else if (x >= 256 && y >= 240) { loadNameTable = 0x2C00; loadAttrTable = 0x2FC0; x -= 256; y -= 240; }
-            
-			loadNameTable += (y / 8) * 32 + x / 8;
-			loadAttrTable += (y / 32) * 8 + x / 32;
-			int attrTablePaletteNumber = 0;
-			int unitColumn = x - (32 * (x / 32));
-			int unitRenderLine = y - (32 * (y / 32));
-			if (unitRenderLine < 16 && unitColumn < 16)
-                attrTablePaletteNumber = 0;
-            else if (unitRenderLine < 16 && unitColumn >= 16)
-                attrTablePaletteNumber = 1;
-            else if (unitRenderLine >= 16 && unitColumn < 16)
-                attrTablePaletteNumber = 2;
-            else if (unitRenderLine >= 16 && unitColumn >= 16)
-                attrTablePaletteNumber = 3;
-
-			Debug.WriteLine(loadAttrTable);
-			int spriteLine = y % 8;
-			int paletteCode = 4 * GetPalette(ppuAddress[loadAttrTable], attrTablePaletteNumber); //BGパレット
-			int colorNumber = 0;
-			for (int i = 0, j = renderPosition; i < 8; i++, j += 4)
-			{
-				colorNumber = sprite[bgPatternTable + ppuAddress[loadNameTable], y, i]; //配色番号
-				if (colorNumber == 0) //0x3F04, 0x3F08, 0x3F0Cのとき
-                    paletteCode = 0;
-				byte[] paletteColor = paletteColors[ppuAddress[0x3F00 + paletteCode + colorNumber]];
-                gameScreen[j] = paletteColor[2];
-                gameScreen[j + 1] = paletteColor[1];
-                gameScreen[j + 2] = paletteColor[0];
-                gameScreen[j + 3] = 255;
-			}
-		}
-
-
-
-
-        /// <summary>
-        /// スプライトを描画
-        /// </summary>
-        void OamRenderScreen()
-        {
-            for (int i = 0; i < 0x40; i++)
-            {
-                if (oam[i] != null)
+				address -= 0x3F00;
+				renderer.Palette[address] = value;
+				switch (address) //パレットミラー
                 {
-                    int x = oam[i].x;
-                    int y = oam[i].y;
-                    bool front = Nes.FetchBit(oam[i].attr, 5) == 0;
-                    if (front && y < 239 && x < 256)
-                    {
-                        for (int j = 0; j < spriteSize; j++)
-                        {
-                            if (RenderLine == (y + j))
-                            {
-                                int spriteTile = oam[i].tile;
-                                int patternTable = spritePatternTable;
-                                int paletteNumber = Nes.FetchBit(oam[i].attr, 1) * 2 + Nes.FetchBit(oam[i].attr, 0);
-                                if (spriteSize > 8) //8x16
-                                {
-                                    spriteTile = 2 * (spriteTile >> 1);
-                                    patternTable = Nes.FetchBit(oam[i].tile, 0) * 0x1000;
-                                }
-
-                                if (j >= 8)
-                                    spriteTile += 1;
-
-                                for (int k = x;k < x + 8 && k < 256;k++)
-                                {
-                                    int paletteCode = 4 * paletteNumber; //スプライトパレット
-                                    int colorNumber = sprite[spriteTile + patternTable, j, k - (k / 8) * 8]; //配色番号
-                                    if (colorNumber == 0) //0x3F10, 0x3F14, 0x3F18, 0x3F1Cは背景色
-                                        continue;
-                                    screen[RenderLine * 256 + k] = paletteColors[ppuAddress[0x3F10 + paletteCode + colorNumber]];
-                                }
-                                break;
-                            }
-                        }
-                    }
+                    case 0x3F00:
+                    case 0x3F04:
+                    case 0x3F08:
+                    case 0x3F0C:
+						renderer.Palette[address + 0x10] = value;
+                        break;
+                    case 0x3F10:
+                    case 0x3F14:
+                    case 0x3F18:
+                    case 0x3F1C:
+						renderer.Palette[address - 0x10] = value;
+                        break;
                 }
-            }
-        }      
-
-        /// <summary>
-        /// 4つあるパレットの内どのパレットを使うか決める
-        /// bit 76543210
-        /// 位置  3 2 1 0
-        /// </summary>
-        /// <returns>パレット番号</returns>
-        /// <param name="value">属性テーブルの値</param>
-        /// <param name="order">属性テーブルのどの位置の値か</param>
-        int GetPalette(byte value, int order)
-        {
-            string binaryNumber = BinaryNumberConversion(value);
-            return int.Parse(binaryNumber[order * 2 + 1].ToString()) + int.Parse(binaryNumber[order * 2].ToString());
+			}
         }
-
+      
 
         /// <summary>
         /// スプライトを読み込み保存
         /// </summary>
         public void LoadSprite()
         {
-            int count = 0;
-            for (int i = 0; i < sprite.GetLength(0); i++)
-            {
-                for (int j = i * 16; j < i * 16 + 8; j++)
-                {
-                    string highOrder = BinaryNumberConversion(ppuAddress[j + 8]);
-                    string lowOrder = BinaryNumberConversion(ppuAddress[j]);
-                    for (int l = 0; l < 8; l++)
-                    {
-                        sprite[i, count, l] = (byte)(int.Parse(highOrder[l].ToString()) * 2 + int.Parse(lowOrder[l].ToString()));
-                    }
-                    count++;
-                }
-                count = 0;
-            }
+			renderer.LoadSprite();
         }
 
-
-        /// <summary>
-        /// 8bit2進数の文字列に変換
-        /// </summary>
-        /// <returns>8bit</returns>
-        /// <param name="originNumber">元値</param>
-        string BinaryNumberConversion(byte originNumber)
-        {
-            string convertNumber = Convert.ToString(originNumber, 2);
-            int length = convertNumber.Length;
-            if (length < 8)
-            {
-                for (int i = 0; i < 8 - length; i++)
-                {
-                    convertNumber = convertNumber.Insert(0, "0");
-                }
-            }
-            return convertNumber;
-        }
-
-        //パレットカラー
-        byte[][] paletteColors = new byte[][]
-        {
-            new byte[]{ 0x75, 0x75, 0x75 }, new byte[]{ 0x27, 0x1B, 0x8F },
-            new byte[]{ 0x00, 0x00, 0xAB }, new byte[]{ 0x47, 0x00, 0x9F },
-            new byte[]{ 0x8F, 0x00, 0x77 }, new byte[]{ 0xAB, 0x00, 0x13 },
-            new byte[]{ 0xA7, 0x00, 0x00 }, new byte[]{ 0x7F, 0x0B, 0x00 },
-            new byte[]{ 0x43, 0x2F, 0x00 }, new byte[]{ 0x00, 0x47, 0x00 },
-            new byte[]{ 0x00, 0x51, 0x00 }, new byte[]{ 0x00, 0x3F, 0x17 },
-            new byte[]{ 0x1B, 0x3F, 0x5F }, new byte[]{ 0x00, 0x00, 0x00 },
-            new byte[]{ 0x05, 0x05, 0x05 }, new byte[]{ 0x05, 0x05, 0x05 },
-
-            new byte[]{ 0xBC, 0xBC, 0xBC }, new byte[]{ 0x00, 0x73, 0xEF },
-            new byte[]{ 0x23, 0x3B, 0xEF }, new byte[]{ 0x83, 0x00, 0xF3 },
-            new byte[]{ 0xBF, 0x00, 0xBF }, new byte[]{ 0xE7, 0x00, 0x5B },
-            new byte[]{ 0xDB, 0x2B, 0x00 }, new byte[]{ 0xCB, 0x4F, 0x0F },
-            new byte[]{ 0x8B, 0x73, 0x00 }, new byte[]{ 0x00, 0x97, 0x00 },
-            new byte[]{ 0x00, 0xAB, 0x00 }, new byte[]{ 0x00, 0x93, 0x3B },
-            new byte[]{ 0x00, 0x83, 0x8B }, new byte[]{ 0x11, 0x11, 0x11 },
-            new byte[]{ 0x09, 0x09, 0x09 }, new byte[]{ 0x09, 0x09, 0x09 },
-
-            new byte[]{ 0xFF, 0xFF, 0xFF }, new byte[]{ 0x3F, 0xBF, 0xFF },
-            new byte[]{ 0x5F, 0x97, 0xFF }, new byte[]{ 0xA7, 0x8B, 0xFD },
-            new byte[]{ 0xF7, 0x7B, 0xFF }, new byte[]{ 0xFF, 0x77, 0xB7 },
-            new byte[]{ 0xFF, 0x77, 0x63 }, new byte[]{ 0xFF, 0x9B, 0x3B },
-            new byte[]{ 0xF3, 0xBF, 0x3F }, new byte[]{ 0x83, 0xD3, 0x13 },
-            new byte[]{ 0x4F, 0xDF, 0x4B }, new byte[]{ 0x58, 0xF8, 0x98 },
-            new byte[]{ 0x00, 0xEB, 0xDB }, new byte[]{ 0x66, 0x66, 0x66 },
-            new byte[]{ 0x0D, 0x0D, 0x0D }, new byte[]{ 0x0D, 0x0D, 0x0D },
-
-            new byte[]{ 0xFF, 0xFF, 0xFF }, new byte[]{ 0xAB, 0xE7, 0xFF },
-            new byte[]{ 0xC7, 0xD7, 0xFF }, new byte[]{ 0xD7, 0xCB, 0xFF },
-            new byte[]{ 0xFF, 0xC7, 0xFF }, new byte[]{ 0xFF, 0xC7, 0xDB },
-            new byte[]{ 0xFF, 0xBF, 0xB3 }, new byte[]{ 0xFF, 0xDB, 0xAB },
-            new byte[]{ 0xFF, 0xE7, 0xA3 }, new byte[]{ 0xE3, 0xFF, 0xA3 },
-            new byte[]{ 0xAB, 0xF3, 0xBF }, new byte[]{ 0xB3, 0xFF, 0xCF },
-            new byte[]{ 0x9F, 0xFF, 0xF3 }, new byte[]{ 0xDD, 0xDD, 0xDD },
-            new byte[]{ 0x11, 0x11, 0x11 }, new byte[]{ 0x11, 0x11, 0x11 }
-        };
     }
 }
