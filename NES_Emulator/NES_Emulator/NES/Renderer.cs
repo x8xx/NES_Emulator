@@ -82,6 +82,7 @@ namespace NES_Emulator.NES
 			spriteRenderPosition = new Dictionary<int, Oam>();
         }
 
+
         /// <summary>
         /// スクリーンの描画
 		/// 1dotずつ描画
@@ -128,14 +129,13 @@ namespace NES_Emulator.NES
         /// <param name="y">読み込みy座標</param>
         byte[] RenderSprite(int x, int y)
 		{
-			int position = x + y * 256;
+			int position = x + y * 256;         
 			if (!spriteRenderPosition.ContainsKey(position))
 				return RenderBackGround(x, y);
-
+                
 			int spritePaletteCode = 4 * spriteRenderPosition[position].Palette; //スプライトパレット
-			Debug.WriteLine("{0}, {1}, {2", spriteRenderPosition[position].TileID, spriteRenderPosition[position].PatternTable);
 			int spriteColorNumber = Sprite[spriteRenderPosition[position].TileID + spriteRenderPosition[position].PatternTable, 
-			                               spriteRenderPosition[position].Y, spriteRenderPosition[position].X]; //配色番号
+			                               y - spriteRenderPosition[position].Y,  x- spriteRenderPosition[position].X]; //配色番号
 			if (spriteColorNumber == 0) //0x3F10, 0x3F14, 0x3F18, 0x3F1Cは背景色
 				return RenderBackGround(x, y);
 			return paletteColors[Palette[0x10 + spritePaletteCode + spriteColorNumber]];
@@ -242,12 +242,12 @@ namespace NES_Emulator.NES
 						spriteRenderPosition.Remove(i + j);
                 }
             }
-
+            
 			int tileID = tile;
 			int patternTableNumber = SpritePatternTable;
 			if (SpriteSize > 8)
 			{
-				patternTableNumber = Nes.FetchBit(tileID, 0) * 0x1000;
+				patternTableNumber = Nes.FetchBit(tileID, 0) * 256;
 				tileID = 2 * (tileID >> 1);
 			}
 			bool verticalReverse = Nes.FetchBit(attr, 7) == 1;
@@ -266,7 +266,7 @@ namespace NES_Emulator.NES
 				Palette = palette
 			};
             
-			for (int i = x + y * 256, k = 0; i < SpriteSize * 256 + y * 256;i+=256, k++)
+			for (int i = x + y * 256, k = 0; i < SpriteSize * 256 + y * 256 + x;i+=256, k++)
 			{
 				for (int j = 0; j < 8;j++)
 				{
@@ -274,11 +274,8 @@ namespace NES_Emulator.NES
 						spriteRenderPosition.Add(i + j, oamTable[offset]);
 					else
 						spriteRenderPosition[i + j] = oamTable[offset];
-
-					spriteRenderPosition[i + j].X = j;
-					spriteRenderPosition[i + j].Y = k;
-
-					if (i >= 2048)
+                 
+					if (k >= 8)
 						spriteRenderPosition[i + j].TileID++;
 				}
 			}
