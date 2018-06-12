@@ -13,23 +13,8 @@ namespace NES_Emulator.NES
 		{
 			this.nes = nes;
 		}
-       
-		public void Run()
-		{
-			int count = 0;
-			nes.ProcessInitialize(unitName);
-			while(nes.DrawingFrame)
-			{
-				if (nes.SyncControll(count))
-				{
-					count++;
-					Debug.WriteLine(unitName + count);
-					Execute();
-					nes.ProcessComplete(unitName, count);
-				}
-			}
-		}
 
-		public abstract void Execute();
+
+		//public abstract void Execute();
     }
 }

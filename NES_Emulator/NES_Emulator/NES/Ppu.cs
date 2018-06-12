@@ -130,7 +130,7 @@ namespace NES_Emulator.NES
             set
             {
                 _totalPpuCycle += value;
-				Debug.WriteLine(_totalPpuCycle + "cycle");
+				//Debug.WriteLine(_totalPpuCycle + "cycle");
             }
         }
 
@@ -162,6 +162,28 @@ namespace NES_Emulator.NES
             }
         }
 
+		int _ppuCycle;
+        public int PpuCycle
+		{
+			get { return _ppuCycle; }
+			set
+			{
+				_ppuCycle = value;
+				if (_ppuCycle >= 341)
+				{
+					if (RenderLine < 240)
+					{
+						RenderLine++;
+						renderer.SpriteHit = false;
+						RenderScreen();
+						PpuCycle -= 341;
+					}
+					else
+						RenderLine++;
+				}
+			}
+		}
+
 
         /// <summary>
         /// スクリーンの描画
@@ -172,24 +194,24 @@ namespace NES_Emulator.NES
 				renderer.RenderScreen(x, RenderLine - 1);
         }
 
-        
-		public override void Execute()
-        {
-			if (TotalPpuCycle >= 341 && RenderLine < 240)
-            {
-                while (_totalPpuCycle >= 341)
-                {
-                    RenderLine++;
-					Debug.WriteLine(RenderLine);
+
+		int ppuCycle = 0;
+        public void Rendering(int cycle)
+		{
+			ppuCycle += 3 * cycle;
+			while (ppuCycle >= 341)
+			{
+				if (RenderLine < 240)
+				{
+					RenderLine++;
+					//Debug.WriteLine(RenderLine);
 					RenderScreen();
-                    _totalPpuCycle -= 341;
-                }
-            }
-            else if (TotalPpuCycle >= 341 && RenderLine >= 240)
-            {
-                RenderLine++;
-            }
-        }
+					ppuCycle -= 341;
+				}
+				else
+					RenderLine++;
+			}
+   		}
 
 
         /// <summary>
@@ -294,6 +316,7 @@ namespace NES_Emulator.NES
 					{
 						renderer.WriteOamTable(i, nes.ReadCpuMemory((ushort)(j + 3)), nes.ReadCpuMemory((ushort)j), nes.ReadCpuMemory((ushort)(j + 1)), nes.ReadCpuMemory((ushort)(j + 2)));
 					}
+					PpuCycle += 514;
 					break;
             }
         }

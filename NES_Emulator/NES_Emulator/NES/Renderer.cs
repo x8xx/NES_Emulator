@@ -24,11 +24,25 @@ namespace NES_Emulator.NES
 			public bool VerticalReverse { get; set; } //水平反転
 			public bool Priority { get; set; } //優先度
 			public int Palette { get; set; } //パレット
-			public bool SpriteHit { get; set; }
+			public Oam Copy(int x, int y)
+			{
+				return new Oam()
+				{
+                    X = x,
+					Y = y,
+					TileID = this.TileID,
+					PatternTable = this.PatternTable,
+					HorizontalReverse = this.HorizontalReverse,
+					VerticalReverse = this.VerticalReverse,
+					Priority = this.Priority,
+					Palette = this.Palette
+				};
+			}
         }
 
 		int screenOffset; //現在描画中のスクリーンの位置
 		Dictionary<int, Oam> spriteRenderPosition; //描画書き込み時にスプライトの書き込み座標を一時的に保存しておく
+		List<int>[] spritePosition; //spriteRenderPositionに保存している座標を保存
         
 		public int ScrollOffsetX { get; set; }
 		public int ScrollOffsetY { get; set; }
@@ -80,6 +94,7 @@ namespace NES_Emulator.NES
 			screenOffset = HEADER_SIZE;
 			oamTable = new Oam[0x40];
 			spriteRenderPosition = new Dictionary<int, Oam>();
+			spritePosition = new List<int>[0x40];
         }
 
 
@@ -132,10 +147,23 @@ namespace NES_Emulator.NES
 			int position = x + y * 256;         
 			if (!spriteRenderPosition.ContainsKey(position))
 				return RenderBackGround(x, y);
-                
+
+			if (spriteRenderPosition[position].TileID == 0 && spriteRenderPosition[position].PatternTable == 0)
+				SpriteHit = true;
+               
 			int spritePaletteCode = 4 * spriteRenderPosition[position].Palette; //スプライトパレット
-			int spriteColorNumber = Sprite[spriteRenderPosition[position].TileID + spriteRenderPosition[position].PatternTable, 
-			                               y - spriteRenderPosition[position].Y,  x- spriteRenderPosition[position].X]; //配色番号
+			int spriteColorNumber = 0;
+			try
+			{
+				spriteColorNumber = Sprite[spriteRenderPosition[position].TileID + spriteRenderPosition[position].PatternTable,
+                                           y - spriteRenderPosition[position].Y, x - spriteRenderPosition[position].X]; //配色番号
+			}
+			catch(Exception e)
+			{
+				Debug.WriteLine((y - spriteRenderPosition[position].Y).ToString() +"|"+ (x - spriteRenderPosition[position].X).ToString());
+			}
+			//int spriteColorNumber = Sprite[spriteRenderPosition[position].TileID + spriteRenderPosition[position].PatternTable, 
+			                               //y - spriteRenderPosition[position].Y,  x - spriteRenderPosition[position].X]; //配色番号
 			if (spriteColorNumber == 0) //0x3F10, 0x3F14, 0x3F18, 0x3F1Cは背景色
 				return RenderBackGround(x, y);
 			return paletteColors[Palette[0x10 + spritePaletteCode + spriteColorNumber]];
@@ -234,14 +262,14 @@ namespace NES_Emulator.NES
         /// <param name="attr">Attr.</param>
         public void WriteOamTable(int offset, int x, int y, int tile, int attr)
 		{
-			for (int i = x + y * 256; i < SpriteSize * 256 + y * 256; i += 256)
-            {
-                for (int j = 0; j < 8; j++)
-                {
-					if (spriteRenderPosition.ContainsKey(x + y * 256 + i + j) && spriteRenderPosition[i + j] == oamTable[offset])
-						spriteRenderPosition.Remove(i + j);
-                }
-            }
+			if (spritePosition[offset] != null)
+			{
+				foreach (int position in spritePosition[offset])
+				{
+					spriteRenderPosition.Remove(position);
+				}
+				spritePosition[offset] = null;
+			}
             
 			int tileID = tile;
 			int patternTableNumber = SpritePatternTable;
@@ -265,15 +293,18 @@ namespace NES_Emulator.NES
 				Priority = priority,
 				Palette = palette
 			};
-            
+
+			spritePosition[offset] = new List<int>();
 			for (int i = x + y * 256, k = 0; i < SpriteSize * 256 + y * 256 + x;i+=256, k++)
 			{
 				for (int j = 0; j < 8;j++)
 				{
 					if (!spriteRenderPosition.ContainsKey(i + j))
-						spriteRenderPosition.Add(i + j, oamTable[offset]);
+						spriteRenderPosition.Add(i + j, oamTable[offset]/*.Copy(j, (y - x)/256)*/);
 					else
-						spriteRenderPosition[i + j] = oamTable[offset];
+						spriteRenderPosition[i + j] = oamTable[offset]/*.Copy(x + j, (y - x)/256)*/;
+
+					spritePosition[offset].Add(i + j);
                  
 					if (k >= 8)
 						spriteRenderPosition[i + j].TileID++;

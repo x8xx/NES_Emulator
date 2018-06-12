@@ -7,6 +7,8 @@ namespace NES_Emulator.NES
 {
 	public class Nes
     {
+		int currentCycle;
+
 		Dictionary<string, List<bool>> processState;
 
 		public Cpu cpu { get; private set; }
@@ -17,6 +19,7 @@ namespace NES_Emulator.NES
 
         public int CharacterRimSize { get; set; }
         public bool verticalMirror { get; set; }
+
 
 		static Nes _nesInstance;
 		public static Nes NesInstance
@@ -61,70 +64,18 @@ namespace NES_Emulator.NES
             
             
 			processState = new Dictionary<string, List<bool>> { { "Cpu", null }, { "Ppu", null } };
-         
+			currentCycle = 0;
+
             return true;
         }
 
-        /// <summary>
-        /// エミュの実行
-        /// </summary>
-		public async Task Run()
+        public void RunEmulator()
 		{
 			DrawingFrame = true;
-			Task ppuTask = Task.Run(() =>
-            {
-                ppu.Run();
-            });
-
-			Task cpuTask = Task.Run(() =>
+ 			while(DrawingFrame)
 			{
-				cpu.Run();
-			});
-
-			await Task.WhenAll(ppuTask, cpuTask);
-			ppuTask.Dispose();
-            cpuTask.Dispose();
-		}
-      
-
-		public void ProcessStart(string unitName)
-		{
-			processState[unitName].Add(false);
-		}
-
-        /// <summary>
-        /// 処理が完了したことを登録
-        /// </summary>
-        /// <param name="unitName">Unit.</param>
-        /// <param name="count">Count.</param>
-		public void ProcessComplete(string unitName, int count)
-		{
-			processState[unitName][count] = true;
-		}
-
-		public void ProcessInitialize(string unitName)
-		{
-			processState[unitName] = new List<bool>();
-			processState[unitName].Add(true);
-		}
-
-        /// <summary>
-        /// タイミング同期調整
-        /// </summary>
-        /// <returns><c>true</c>, , <c>false</c> otherwise.</returns>
-        /// <param name="count">Count.</param>
-		public bool SyncControll(int count)
-		{
-			foreach(KeyValuePair<string, List<bool>> state in processState)
-			{
-				if (state.Value.Count < count - 1)
-					return false;
-				if (!state.Value[count])
-					return false;
+				ppu.PpuCycle += 3 * cpu.Execute();
 			}
-			foreach (KeyValuePair<string, List<bool>> state in processState)
-				state.Value.Add(false);
-			return true;
 		}
               
         /// <summary>

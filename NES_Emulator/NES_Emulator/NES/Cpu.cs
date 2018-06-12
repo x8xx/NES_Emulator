@@ -592,7 +592,7 @@ namespace NES_Emulator.NES
         /// <summary>
         /// 命令を実効
         /// </summary>
-		public override void Execute()
+		public int Execute()
         {
             byte opcode = cpuAddress[programCounter];
             switch (opcode)
@@ -1130,11 +1130,12 @@ namespace NES_Emulator.NES
                     programCounter++;
                     break;
             }
-            PpuCycleInc(cpuCycle[opcode]);
+			return cpuCycle[opcode];
+            //PpuCycleInc(cpuCycle[opcode]);
         }
 
 		//CPUサイクル数
-        public static int[] cpuCycle =
+		static int[] cpuCycle =
         {
             /*0x00*/ 7, 6, 2, 8, 3, 3, 5, 5, 3, 2, 2, 2, 4, 4, 6, 6,
             /*0x10*/ 2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 6, 7,
