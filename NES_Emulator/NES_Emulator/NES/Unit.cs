@@ -23,7 +23,7 @@ namespace NES_Emulator.NES
 				if (nes.SyncControll(count))
 				{
 					count++;
-					//nes.ProcessStart(unitName);
+					Debug.WriteLine(unitName + count);
 					Execute();
 					nes.ProcessComplete(unitName, count);
 				}

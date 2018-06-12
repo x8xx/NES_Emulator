@@ -2,7 +2,6 @@
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Diagnostics;
-using Xamarin.Forms;
 
 namespace NES_Emulator.NES
 {
@@ -66,6 +65,9 @@ namespace NES_Emulator.NES
             return true;
         }
 
+        /// <summary>
+        /// エミュの実行
+        /// </summary>
 		public async Task Run()
 		{
 			DrawingFrame = true;
@@ -81,9 +83,10 @@ namespace NES_Emulator.NES
 
 			await Task.WhenAll(ppuTask, cpuTask);
 			ppuTask.Dispose();
-			cpuTask.Dispose();
+            cpuTask.Dispose();
 		}
       
+
 		public void ProcessStart(string unitName)
 		{
 			processState[unitName].Add(false);
@@ -96,9 +99,7 @@ namespace NES_Emulator.NES
         /// <param name="count">Count.</param>
 		public void ProcessComplete(string unitName, int count)
 		{
-			//Debug.WriteLine(processState.ContainsKey(unitName));
 			processState[unitName][count] = true;
-			//Debug.WriteLine(5);
 		}
 
 		public void ProcessInitialize(string unitName)
@@ -116,6 +117,8 @@ namespace NES_Emulator.NES
 		{
 			foreach(KeyValuePair<string, List<bool>> state in processState)
 			{
+				if (state.Value.Count < count - 1)
+					return false;
 				if (!state.Value[count])
 					return false;
 			}
@@ -123,30 +126,6 @@ namespace NES_Emulator.NES
 				state.Value.Add(false);
 			return true;
 		}
-
-        int coun = 0;
-        /// <summary>
-        /// CPUの命令を実効
-        /// </summary>
-        public void OperatingCpu()
-        {
-            while(!ppu.notificationScreenUpdate)
-            {
-				Task.Run(() =>
-				{
-					//if (coun > 10000)
-                        //cpu.DebugWriteValue(coun);
-					cpu.Execute();
-                    coun++;
-				});
-				/*cpu.Execute();
-                coun++;*/
-				//if (coun > 10000)
-                //cpu.DebugWriteValue(coun);
-                //cpu.Execute();
-                //coun++;
-            }
-        }
               
         /// <summary>
         /// CPUメモリを読み込む

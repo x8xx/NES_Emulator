@@ -45,10 +45,6 @@ namespace NES_Emulator.NES
          */
         byte[] ppuAddress;
 
-		byte[] patternTable; //パターンテーブル
-		byte[] nameTable; //ネームテーブル
-		byte[] attrTable; //属性テーブル
-		byte[] palette; //パレット
 
         /* 
          * OAM (Object Attribute Memory)
@@ -75,30 +71,11 @@ namespace NES_Emulator.NES
          *      Sprite.x
          *          x座標
          */
-        Oam[] oam;
-		Oam[] oamTable;
-		class Oam
-        {
-            public byte y;
-            public byte x;
-            public byte tile;
-            public byte attr;
-			public int currentLine;
-        }
 
-        byte[,,] sprite; //Sprite保存用
-        byte[][] screen; //スクリーン
 
-        int spriteSize; //スプライトのサイズ保存用 8 x spriteSizeとなる
-
-        int bgPatternTable; //BGのパターンテーブル
-        int spritePatternTable; //スプライトのパターンテーブル
 
         bool nmiInterrupt; //NMI割り込みを有効化するか
-        bool spriteHit; //0爆弾
         bool verticalMirror; //true : 垂直ミラー, false : 水平ミラー
-        bool isSpriteVisible; //スプライトを表示するかしないか
-        bool isBgVisible; //BGを表示するかしないか
 
         byte oamAddr;  //0x2003 OAMADDR W スプライトメモリデータ 書き込むスプライト領域のアドレス
 		byte[] tempOamData; //0, y 1, tile 2, attr 3, x
@@ -106,17 +83,13 @@ namespace NES_Emulator.NES
         byte ppuData; //0x2007 PPUDATA RW PPUメモリデータ PPUメモリ領域のデータ
         int oamDataWriteCount; //0x2004のwrite回数を記録
         int ppuScrollWriteCount; //0x2005のwrite回数を記録
-        int scrollOffsetX; //X方向へのスクロール
-        int scrollOffsetY; //Y方向へのスクロール
         int ppuAddrWriteCount; //0x2006のWrite回数を記録
         byte ppuAddressInc; //0x2006のインクリメントする大きさ
-
-        int _totalPpuCycle; //PPUの合計サイクル数
+        
+        double _totalPpuCycle; //PPUの合計サイクル数
         int _renderLine; //次に描画するlineを保持
         bool vBlank; //VBlank中か
-
-		const int headerSize = 54;
-        byte[] gameScreen;
+        
         //public ImageSource GameScreen { get { return ImageSource.FromStream(() => new MemoryStream(gameScreen)); } }
 		public ImageSource GameScreen { get { return renderer.GameScreen; } }
 		Renderer renderer;
@@ -127,100 +100,97 @@ namespace NES_Emulator.NES
         {
 			unitName = GetType().Name;
             ppuAddress = new byte[0x4000];
-            oam = new Oam[0x40];
             this.nes = nes;
-
-			nameTable = new byte[0xF00];
-			attrTable = new byte[0x100];
-			oamTable = new Oam[61440];
             
-            screen = new byte[61440][];
-
-            spriteSize = 8;
-            bgPatternTable = 0;
-            spritePatternTable = 0;
 
             nmiInterrupt = false;
             verticalMirror = nes.verticalMirror;
-            isSpriteVisible = true;
-            isBgVisible = true;
 
             oamDataWriteCount = 0;
 			tempOamData = new byte[4];
-            scrollOffsetX = 0;
-            scrollOffsetY = 0;
             ppuAddrWriteCount = 0;
             ppuAddressInc = 0x01;
 
             TotalPpuCycle = 0;
             RenderLine = 0;
             vBlank = false;
-
-            //BMP画像生成
-			gameScreen = new byte[245814];
-            using (MemoryStream memoryStream = new MemoryStream(gameScreen))
-            {
-                using (BinaryWriter writer = new BinaryWriter(memoryStream))
-                {
-                    //BitmapFileHeader(14byte)
-                    writer.Write(new char[] { 'B', 'M' });  //シグネチャ
-                    writer.Write(245814); //ファイルサイズ
-                    writer.Write((short)0); //予約領域
-                    writer.Write((short)0); //予約領域
-                    writer.Write(headerSize); //ピクセルまでのオフセット
-
-                    //BitmapInfoHeader(40byte)
-                    writer.Write(40); //ヘッダーサイズ
-                    writer.Write(256); //width
-                    writer.Write(-240); //height
-                    writer.Write((short)1); //プレーン数
-                    writer.Write((short)32); //ピクセルあたりのビット数
-                    writer.Write(0); //圧縮形式
-                    writer.Write(245760); //画像サイズ
-                    writer.Write(0); //横方向の解像度
-                    writer.Write(0); //縦方向の解像度
-                    writer.Write(0); //色テーブルの色の数
-                    writer.Write(0); //重要な色の数
-                }
-            }
-
+         
 			renderer = new Renderer();
 			renderer.Sprite = new byte[nes.CharacterRimSize / 16, 8, 8];
         }
 
-		public void RenderScreen(/*byte[][] table, int renderLine*/)
+		/// <summary>
+        /// PPUの合計サイクル数を保持
+        /// サイクル数が341以上になったとき1ライン描画する
+        /// </summary>
+        /// <value>The total ppu cycle.</value>
+        public double TotalPpuCycle
         {
-			/*for (int i = headerSize + renderLine * 256 * 4, j = renderLine * 256; j < (renderLine + 1) * 256; i += 4, j++)
+            get { return _totalPpuCycle; }
+            set
             {
-				gameScreen[i] = table[j][2];
-				gameScreen[i + 1] = table[j][1];
-                gameScreen[i + 2] = table[j][0];
-				gameScreen[i + 3] = 255;
-            }*/
+                _totalPpuCycle += value;
+				Debug.WriteLine(_totalPpuCycle + "cycle");
+            }
+        }
+
+
+        /// <summary>
+        /// 次に描画するラインを保存する
+        /// 262ライン以上でラインを0にする
+        /// </summary>
+        /// <value>The render line.</value>
+        int RenderLine
+        {
+            get { return _renderLine; }
+            set
+            {
+                _renderLine = value;
+                if (_renderLine > 261)
+                {
+                    notificationScreenUpdate = true;
+                    nes.DrawingFrame = false;
+                    _renderLine = 0;
+                }
+
+                if (RenderLine == 240 && nmiInterrupt)
+                    nes.cpu.Nmi();
+                else if (RenderLine == 240 && !nmiInterrupt)
+                    vBlank = true;
+                else if (RenderLine == 0)
+                    vBlank = false;
+            }
+        }
+
+
+        /// <summary>
+        /// スクリーンの描画
+        /// </summary>
+		public void RenderScreen()
+        {
 			for (int x = 0; x < 256; x++)
 				renderer.RenderScreen(x, RenderLine - 1);
         }
 
-
+        
 		public override void Execute()
         {
-			if (_totalPpuCycle >= 341 && RenderLine < 240)
+			if (TotalPpuCycle >= 341 && RenderLine < 240)
             {
                 while (_totalPpuCycle >= 341)
                 {
                     RenderLine++;
-                    _totalPpuCycle -= 341;
-					//RenderScreen(screen, RenderLine - 1);
-					//RenderScreen(scrollOffsetX, scrollOffsetY);
-					//Renderer(scrollOffsetX, scrollOffsetY);
+					Debug.WriteLine(RenderLine);
 					RenderScreen();
+                    _totalPpuCycle -= 341;
                 }
             }
-            else if (_totalPpuCycle >= 341 && RenderLine >= 240)
+            else if (TotalPpuCycle >= 341 && RenderLine >= 240)
             {
                 RenderLine++;
             }
         }
+
 
         /// <summary>
         /// PPUレジスタの書き込み
@@ -247,7 +217,6 @@ namespace NES_Emulator.NES
                 case 0x2000:
                     nmiInterrupt = Nes.FetchBit(value, 7) == 1;
                     ppuAddressInc = (byte)(Nes.FetchBit(value, 2) * 31 + 1);
-
 					renderer.SpriteSize = Nes.FetchBit(value, 5) * 8 + 8;
 					renderer.BgPatternTable = 256 * Nes.FetchBit(value, 4);
 					renderer.SpritePatternTable = 256 * Nes.FetchBit(value, 3);
@@ -323,20 +292,18 @@ namespace NES_Emulator.NES
                 case 0x4014:
                     for (int i = 0, j = value * 0x100; i < 0x40; i++, j += 4)
 					{
-						/*byte x = nes.ReadCpuMemory((ushort)(j + 3));
-						byte y = nes.ReadCpuMemory((ushort)j);
-						byte tile = nes.ReadCpuMemory((ushort)(j + 1));
-						byte attr = nes.ReadCpuMemory((ushort)(j + 2));
-						oamTable[x + 256 * y] = new Oam() { y = y, tile = tile, attr = attr, x = x, currentLine = 0 };*/
-						Debug.WriteLine(1);
 						renderer.WriteOamTable(i, nes.ReadCpuMemory((ushort)(j + 3)), nes.ReadCpuMemory((ushort)j), nes.ReadCpuMemory((ushort)(j + 1)), nes.ReadCpuMemory((ushort)(j + 2)));
-						Debug.WriteLine(2);
 					}
 					break;
             }
         }
 
 
+        /// <summary>
+        /// PPUレジスタ読み込み
+        /// </summary>
+        /// <returns>The ppu register.</returns>
+        /// <param name="address">Address.</param>
         public byte ReadPpuRegister(ushort address)
         {
             switch (address)
@@ -355,58 +322,15 @@ namespace NES_Emulator.NES
                  */
                 case 0x2002:
                     int vblankFlag = (vBlank) ? 1 : 0;
-                    int sprite0Hit = (spriteHit) ? 1 : 0;
+                    //int sprite0Hit = (spriteHit) ? 1 : 0;
                     vBlank = false;
                     oamDataWriteCount = 0;
                     ppuAddrWriteCount = 0;
-                    return (byte)(vblankFlag * 0x80 + sprite0Hit * 0x40);
+                    return (byte)(vblankFlag * 0x80);
                 case 0x2007:
                     break;
             }
             return 0x00;
-        }
-
-
-        /// <summary>
-        /// PPUの合計サイクル数を保持
-        /// サイクル数が341以上になったとき1ライン描画する
-        /// </summary>
-        /// <value>The total ppu cycle.</value>
-        public int TotalPpuCycle
-        {
-            get { return _totalPpuCycle; }
-            set
-            {
-                _totalPpuCycle += value;
-            }
-        }
-
-
-        /// <summary>
-        /// 次に描画するラインを保存する
-        /// 262ライン以上でラインを0にする
-        /// </summary>
-        /// <value>The render line.</value>
-        int RenderLine
-        {
-            get { return _renderLine; }
-            set
-            {
-                _renderLine = value;
-                if (_renderLine > 261)
-                {
-                    notificationScreenUpdate = true;
-					nes.DrawingFrame = false;
-                    _renderLine = 0;
-                }
-
-                if (RenderLine == 240 && nmiInterrupt)
-                    nes.cpu.Nmi();
-                else if (RenderLine == 240 && !nmiInterrupt)
-                    vBlank = true;
-                else if (RenderLine == 0)
-                    vBlank = false;
-            }
         }
 
 
