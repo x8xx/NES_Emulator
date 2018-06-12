@@ -47,24 +47,36 @@ namespace NES_Emulator.ViewModels
                 nes.InputKey(1, 7);
             });
         }
-
-
+        
         /// <summary>
         /// 電源ON
         /// </summary>
-        async Task PowerOn()
+        void PowerOn()
         {
             if (nes.PowerOn(rom))
             {
-				GameScreen = nes.ppu.GameScreen;
-				Device.StartTimer(TimeSpan.FromMilliseconds(16), () =>
-				{
-					nes.Run();
-					GameScreen = nes.ppu.GameScreen;
-					return true;
-				});
+				RunEmulator();
             }
         }
+
+
+        /// <summary>
+        /// エミュの実行
+        /// </summary>
+        void RunEmulator()
+		{
+			GameScreen = nes.ppu.GameScreen;
+            Device.StartTimer(TimeSpan.FromMilliseconds(16), () =>
+            {
+                Task.Factory.StartNew(async () =>
+                {
+                    await nes.Run();
+                    Device.BeginInvokeOnMainThread(() => GameScreen = nes.ppu.GameScreen);
+					RunEmulator();
+                });
+                return false;
+            });
+		}
 
 
         public void OnNavigatedFrom(NavigationParameters parameters)
