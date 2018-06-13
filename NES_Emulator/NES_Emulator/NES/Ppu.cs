@@ -93,10 +93,8 @@ namespace NES_Emulator.NES
         //public ImageSource GameScreen { get { return ImageSource.FromStream(() => new MemoryStream(gameScreen)); } }
 		public ImageSource GameScreen { get { return renderer.GameScreen; } }
 		Renderer renderer;
-
-        public bool notificationScreenUpdate { get; set; } //1フレーム更新通知
         
-		public Ppu(Nes nes, int characterRomSize) : base(nes)
+		public Ppu(Nes nes, MirrorType mirrorType) : base(nes)
         {
 			unitName = GetType().Name;
             ppuAddress = new byte[0x4000];
@@ -104,7 +102,6 @@ namespace NES_Emulator.NES
             
 
             nmiInterrupt = false;
-            verticalMirror = nes.verticalMirror;
 
             oamDataWriteCount = 0;
 			tempOamData = new byte[4];
@@ -115,7 +112,7 @@ namespace NES_Emulator.NES
             RenderLine = 0;
             vBlank = false;
          
-			renderer = new Renderer();
+			renderer = new Renderer(mirrorType);
 			renderer.Sprite = new byte[nes.CharacterRimSize / 16, 8, 8];
         }
 
@@ -148,7 +145,6 @@ namespace NES_Emulator.NES
                 _renderLine = value;
                 if (_renderLine > 261)
                 {
-                    notificationScreenUpdate = true;
                     nes.DrawingFrame = false;
                     _renderLine = 0;
                 }

@@ -7,9 +7,6 @@ namespace NES_Emulator.NES
 {
 	public class Nes
     {
-		int currentCycle;
-
-		Dictionary<string, List<bool>> processState;
 
 		public Cpu cpu { get; private set; }
         public Ppu ppu { get; private set; }
@@ -18,8 +15,6 @@ namespace NES_Emulator.NES
 		public bool DrawingFrame { get; set; } 
 
         public int CharacterRimSize { get; set; }
-        public bool verticalMirror { get; set; }
-
 
 		static Nes _nesInstance;
 		public static Nes NesInstance
@@ -43,10 +38,15 @@ namespace NES_Emulator.NES
             if (!(romBinary[0] == 0x4E && romBinary[1] == 0x45 && romBinary[2] == 0x53 && romBinary[3] == 0x1A)) //NESROMか判定
 				return false;
             CharacterRimSize = romBinary[5] * 0x2000;
-            verticalMirror = (romBinary[6] % 2) != 0;
+			MirrorType mirrorType;
+			if ((romBinary[6] % 2) != 0)
+				mirrorType = MirrorType.VerticalMirror;
+			else
+				mirrorType = MirrorType.HorizontalMirror;
+
 
             cpu = new Cpu(this);
-			ppu = new Ppu(this, romBinary[5] * 0x2000);
+			ppu = new Ppu(this, mirrorType);
 			ControllerInstance = new Controller();
 
             int count = 0x10;
@@ -61,10 +61,6 @@ namespace NES_Emulator.NES
             }
 
             ppu.LoadSprite(); //スプライト読み込み
-            
-            
-			processState = new Dictionary<string, List<bool>> { { "Cpu", null }, { "Ppu", null } };
-			currentCycle = 0;
 
             return true;
         }

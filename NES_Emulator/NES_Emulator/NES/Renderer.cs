@@ -24,25 +24,13 @@ namespace NES_Emulator.NES
 			public bool VerticalReverse { get; set; } //水平反転
 			public bool Priority { get; set; } //優先度
 			public int Palette { get; set; } //パレット
-			public Oam Copy(int x, int y)
-			{
-				return new Oam()
-				{
-                    X = x,
-					Y = y,
-					TileID = this.TileID,
-					PatternTable = this.PatternTable,
-					HorizontalReverse = this.HorizontalReverse,
-					VerticalReverse = this.VerticalReverse,
-					Priority = this.Priority,
-					Palette = this.Palette
-				};
-			}
         }
 
 		int screenOffset; //現在描画中のスクリーンの位置
 		Dictionary<int, Oam> spriteRenderPosition; //描画書き込み時にスプライトの書き込み座標を一時的に保存しておく
 		List<int>[] spritePosition; //spriteRenderPositionに保存している座標を保存
+
+		MirrorType mirrorType;
         
 		public int ScrollOffsetX { get; set; }
 		public int ScrollOffsetY { get; set; }
@@ -54,10 +42,9 @@ namespace NES_Emulator.NES
 		public bool IsSpriteVisible { get; set; } //スプライトを表示するかどうか
 		public int SpriteSize { get; set; } //スプライトサイズ
 		public bool SpriteHit { get; set; } //0爆弾
-		public Mirror ScreenMirror { get; set; }
         public ImageSource GameScreen { get { return ImageSource.FromStream(() => new MemoryStream(gameScreen)); } }
 
-        public Renderer()
+		public Renderer(MirrorType mirrorType)
         {
 			//BMP画像生成
             gameScreen = new byte[245814];
@@ -95,6 +82,7 @@ namespace NES_Emulator.NES
 			oamTable = new Oam[0x40];
 			spriteRenderPosition = new Dictionary<int, Oam>();
 			spritePosition = new List<int>[0x40];
+			this.mirrorType = mirrorType;
         }
 
 
@@ -156,14 +144,9 @@ namespace NES_Emulator.NES
 			try
 			{
 				spriteColorNumber = Sprite[spriteRenderPosition[position].TileID + spriteRenderPosition[position].PatternTable,
-                                           y - spriteRenderPosition[position].Y, x - spriteRenderPosition[position].X]; //配色番号
+										   y - spriteRenderPosition[position].Y, x - spriteRenderPosition[position].X]; //配色番号
 			}
-			catch(Exception e)
-			{
-				Debug.WriteLine((y - spriteRenderPosition[position].Y).ToString() +"|"+ (x - spriteRenderPosition[position].X).ToString());
-			}
-			//int spriteColorNumber = Sprite[spriteRenderPosition[position].TileID + spriteRenderPosition[position].PatternTable, 
-			                               //y - spriteRenderPosition[position].Y,  x - spriteRenderPosition[position].X]; //配色番号
+			catch (Exception) {}
 			if (spriteColorNumber == 0) //0x3F10, 0x3F14, 0x3F18, 0x3F1Cは背景色
 				return RenderBackGround(x, y);
 			return paletteColors[Palette[0x10 + spritePaletteCode + spriteColorNumber]];
@@ -182,23 +165,23 @@ namespace NES_Emulator.NES
 				tableAddress = ((address - 0x2000) / 32) * 64 + address % 32;
 			else if (address >= 0x2400 && address <= 0x27BF)
 			{
-				switch (ScreenMirror)
+				switch (mirrorType)
                 {
-                    case Mirror.HorizontalMirror:
-						tableAddress =  ((address - 0x2000 - 0x40) / 32) * 64 + address % 32 + 64 * 30;
+                    case MirrorType.HorizontalMirror:
+						tableAddress =  ((address - 0x2400) / 32) * 64 + address % 32 + 64 * 30;
                         break;
-                    case Mirror.VerticalMirror:
-						tableAddress = ((address - 0x2000 - 0x40) / 32) * 64 + address % 32 + 32;
+                    case MirrorType.VerticalMirror:
+						tableAddress = ((address - 0x2400) / 32) * 64 + address % 32 + 32;
                         break;
                 }
 			}
 			nameTable[tableAddress] = value;
-			switch (ScreenMirror)
+			switch (mirrorType)
 			{
-				case Mirror.HorizontalMirror:
+				case MirrorType.HorizontalMirror:
 					nameTable[tableAddress + 32] = value;
 					break;
-				case Mirror.VerticalMirror:
+				case MirrorType.VerticalMirror:
 					nameTable[tableAddress + 64 * 30] = value;
 					break;
 			}
@@ -215,22 +198,30 @@ namespace NES_Emulator.NES
 			int tableAddress = 0;
 			if (address >= 0x23C0 && address <= 0x23FF)
 				tableAddress = ((address - 0x23C0) / 8) * 16 + address % 8;
-			else if (address >= 0x2400 && address <= 0x27BF)
+			else if (address >= 0x27C0 && address <= 0x27FF)
 			{
-				switch (ScreenMirror)
+				switch (mirrorType)
 				{
-					case Mirror.HorizontalMirror:
-						tableAddress = ((address - 0x23C0 - 0x3C0) / 8) * 16 + address % 8 + 16 * 8;
+					case MirrorType.HorizontalMirror:
+						tableAddress = ((address - 0x27C0) / 8) * 16 + address % 8 + 16 * 8;
 						break;
-					case Mirror.VerticalMirror:
-						tableAddress = ((address - 0x2000 - 0x3C0) / 8) * 16 + address % 8 + 8;
+					case MirrorType.VerticalMirror:
+						tableAddress = ((address - 0x27C0) / 8) * 16 + address % 8 + 8;
 						break;
 				}
 			}
             
 			tableAddress *= 32;
 			int paletteNumber = GetPalette(value, 0);
-			nameTable[tableAddress] = (byte)paletteNumber;
+			try
+			{
+				nameTable[tableAddress] = (byte)paletteNumber;
+			}
+			catch(Exception e)
+			{
+				Debug.WriteLine(tableAddress);
+			}
+			//nameTable[tableAddress] = (byte)paletteNumber;
 			nameTable[tableAddress + 1] = (byte)paletteNumber;
 			nameTable[tableAddress + 64] = (byte)paletteNumber;
 			nameTable[tableAddress + 65] = (byte)paletteNumber;
@@ -300,9 +291,9 @@ namespace NES_Emulator.NES
 				for (int j = 0; j < 8;j++)
 				{
 					if (!spriteRenderPosition.ContainsKey(i + j))
-						spriteRenderPosition.Add(i + j, oamTable[offset]/*.Copy(j, (y - x)/256)*/);
+						spriteRenderPosition.Add(i + j, oamTable[offset]);
 					else
-						spriteRenderPosition[i + j] = oamTable[offset]/*.Copy(x + j, (y - x)/256)*/;
+						spriteRenderPosition[i + j] = oamTable[offset];
 
 					spritePosition[offset].Add(i + j);
                  
@@ -421,11 +412,5 @@ namespace NES_Emulator.NES
         };
 
     }
-
-	public enum Mirror
-	{
-		HorizontalMirror, //水平ミラー
-		VerticalMirror //垂直ミラー
-	}
 
 }
