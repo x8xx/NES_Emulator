@@ -117,7 +117,7 @@ namespace NES_Emulator.NES
             int line = y % 8;
 
 			int paletteNumber = 4 * attrTable[tableAddress];
-			int colorNumber = Sprite[nameTable[tableAddress], line, column];
+			int colorNumber = Sprite[nameTable[tableAddress] + BgPatternTable, line, column];
 			if (colorNumber == 0)
 				paletteNumber = 0;
 			return paletteColors[Palette[paletteNumber + colorNumber]];
@@ -203,45 +203,57 @@ namespace NES_Emulator.NES
 				switch (mirrorType)
 				{
 					case MirrorType.HorizontalMirror:
-						tableAddress = ((address - 0x27C0) / 8) * 16 + address % 8 + 16 * 8;
+						tableAddress = ((address - 0x27C0) / 8) * 16 + address % 8 + 8 * 16;
 						break;
 					case MirrorType.VerticalMirror:
 						tableAddress = ((address - 0x27C0) / 8) * 16 + address % 8 + 8;
 						break;
 				}
 			}
+			//Debug.WriteLine(Convert.ToString(address, 16) + ", " + tableAddress);
             
-			tableAddress *= 32;
+			tableAddress = 4 * (tableAddress % 16) + 256 * (tableAddress / 16);
+			//Debug.WriteLine(Convert.ToString(address, 16) + ", " + tableAddress);
 			int paletteNumber = GetPalette(value, 0);
 			try
 			{
-				nameTable[tableAddress] = (byte)paletteNumber;
+				attrTable[tableAddress] = (byte)paletteNumber;
 			}
 			catch(Exception e)
 			{
-				Debug.WriteLine(tableAddress);
+				//Debug.WriteLine( + ", "  +tableAddress);
 			}
-			//nameTable[tableAddress] = (byte)paletteNumber;
-			nameTable[tableAddress + 1] = (byte)paletteNumber;
-			nameTable[tableAddress + 64] = (byte)paletteNumber;
-			nameTable[tableAddress + 65] = (byte)paletteNumber;
+			attrTable[tableAddress + 1] = (byte)paletteNumber;
+			attrTable[tableAddress + 64] = (byte)paletteNumber;
+			attrTable[tableAddress + 65] = (byte)paletteNumber;
 			paletteNumber = GetPalette(value, 1);
-			nameTable[tableAddress + 2] = (byte)paletteNumber;
-			nameTable[tableAddress + 3] = (byte)paletteNumber;
-			nameTable[tableAddress + 66] = (byte)paletteNumber;
-			nameTable[tableAddress + 67] = (byte)paletteNumber;
+			attrTable[tableAddress + 2] = (byte)paletteNumber;
+			attrTable[tableAddress + 3] = (byte)paletteNumber;
+			attrTable[tableAddress + 66] = (byte)paletteNumber;
+			attrTable[tableAddress + 67] = (byte)paletteNumber;
 			paletteNumber = GetPalette(value, 2);
-			nameTable[tableAddress + 128] = (byte)paletteNumber;
-			nameTable[tableAddress + 129] = (byte)paletteNumber;
-			nameTable[tableAddress + 192] = (byte)paletteNumber;
-			nameTable[tableAddress + 193] = (byte)paletteNumber;
+			attrTable[tableAddress + 128] = (byte)paletteNumber;
+			attrTable[tableAddress + 129] = (byte)paletteNumber;
+			attrTable[tableAddress + 192] = (byte)paletteNumber;
+			attrTable[tableAddress + 193] = (byte)paletteNumber;
 			paletteNumber = GetPalette(value, 3);
-			nameTable[tableAddress + 130] = (byte)paletteNumber;
-			nameTable[tableAddress + 131] = (byte)paletteNumber;
-			nameTable[tableAddress + 194] = (byte)paletteNumber;
-			nameTable[tableAddress + 195] = (byte)paletteNumber;
+			attrTable[tableAddress + 130] = (byte)paletteNumber;
+			attrTable[tableAddress + 131] = (byte)paletteNumber;
+			attrTable[tableAddress + 194] = (byte)paletteNumber;
+			attrTable[tableAddress + 195] = (byte)paletteNumber;
 		}
         
+		public void TestShowAttr()
+		{
+			Debug.WriteLine("---------------------------------------------------------------------------------------------------------");
+			for (int i = 0; i < attrTable.Length;i++)
+			{
+				if ((i % 64) == 0)
+					Debug.WriteLine("");
+				Debug.Write(nameTable[i] + " ");
+			}
+		}
+
         
         /// <summary>
         /// oamメモリへの書き込み

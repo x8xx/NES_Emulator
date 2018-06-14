@@ -145,6 +145,7 @@ namespace NES_Emulator.NES
                 _renderLine = value;
                 if (_renderLine > 261)
                 {
+					//renderer.TestShowAttr();
                     nes.DrawingFrame = false;
                     _renderLine = 0;
                 }
@@ -283,6 +284,7 @@ namespace NES_Emulator.NES
 							//scrollOffsetY = value;
 							renderer.ScrollOffsetY = value;
                             ppuScrollWriteCount = 0;
+							Debug.WriteLine(renderer.ScrollOffsetX + ", " + renderer.ScrollOffsetY);
                             break;
                     }
                     break;
@@ -374,16 +376,16 @@ namespace NES_Emulator.NES
 				renderer.Palette[address] = value;
 				switch (address) //パレットミラー
                 {
-                    case 0x3F00:
-                    case 0x3F04:
-                    case 0x3F08:
-                    case 0x3F0C:
+                    case 0x00:
+                    case 0x04:
+                    case 0x08:
+                    case 0x0C:
 						renderer.Palette[address + 0x10] = value;
                         break;
-                    case 0x3F10:
-                    case 0x3F14:
-                    case 0x3F18:
-                    case 0x3F1C:
+                    case 0x10:
+                    case 0x14:
+                    case 0x18:
+                    case 0x1C:
 						renderer.Palette[address - 0x10] = value;
                         break;
                 }
