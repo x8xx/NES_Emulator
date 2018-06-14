@@ -145,16 +145,17 @@ namespace NES_Emulator.NES
                 _renderLine = value;
                 if (_renderLine > 261)
                 {
-					//renderer.TestShowAttr();
                     nes.DrawingFrame = false;
                     _renderLine = 0;
                 }
 
-                if (RenderLine == 240 && nmiInterrupt)
-                    nes.cpu.Nmi();
-                else if (RenderLine == 240 && !nmiInterrupt)
-                    vBlank = true;
-                else if (RenderLine == 0)
+                if (RenderLine == 241)
+				{
+					if (nmiInterrupt)
+						nes.cpu.Nmi();
+					vBlank = true;
+				}
+                else if (RenderLine == 261)
                     vBlank = false;
             }
         }
@@ -343,11 +344,11 @@ namespace NES_Emulator.NES
                  */
                 case 0x2002:
                     int vblankFlag = (vBlank) ? 1 : 0;
-                    //int sprite0Hit = (spriteHit) ? 1 : 0;
+					int spriteHit = (renderer.SpriteHit) ? 1 : 0;
                     vBlank = false;
                     oamDataWriteCount = 0;
                     ppuAddrWriteCount = 0;
-                    return (byte)(vblankFlag * 0x80);
+					return (byte)(vblankFlag * 0x80 + spriteHit * 0x40);
                 case 0x2007:
                     break;
             }

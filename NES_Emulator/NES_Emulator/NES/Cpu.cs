@@ -14,6 +14,8 @@ namespace NES_Emulator.NES
         byte registerS; //8bit
         ushort programCounter; //16bit
 
+		readonly ushort INITIAL_PROGRAM_COUNTER;
+
         //フラグ
         bool nFlag; //演算結果のbit7の値
         bool vFlag; //演算結果がオーバーフローを起こしたらセット
@@ -36,11 +38,13 @@ namespace NES_Emulator.NES
          */
         byte[] cpuAddress;
         
-		public Cpu(Nes nes) : base(nes)
+		public Cpu(Nes nes, int programRomSize) : base(nes)
         {
 			unitName = GetType().Name;
             cpuAddress = new byte[0x10000];
-            programCounter = 0x8000; //PC初期化
+			INITIAL_PROGRAM_COUNTER = (ushort)(0x10000 - programRomSize);
+			Debug.WriteLine(INITIAL_PROGRAM_COUNTER);
+			programCounter = INITIAL_PROGRAM_COUNTER; //PC初期化
             //フラグ初期化
             nFlag = false;
             vFlag = false;
@@ -594,6 +598,8 @@ namespace NES_Emulator.NES
         /// </summary>
 		public int Execute()
         {
+			if (programCounter == 0x8085)
+				Debug.WriteLine("nmi");
             byte opcode = cpuAddress[programCounter];
             switch (opcode)
             {

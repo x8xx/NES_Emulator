@@ -44,16 +44,25 @@ namespace NES_Emulator.NES
 			else
 				mirrorType = MirrorType.HorizontalMirror;
 
-
-            cpu = new Cpu(this);
+			int programRomSize = romBinary[4] * 0x4000;
+			cpu = new Cpu(this, programRomSize);
 			ppu = new Ppu(this, mirrorType);
 			ControllerInstance = new Controller();
 
             int count = 0x10;
-            for (int i = 0;i < romBinary[4] * 0x4000;i++, count++) //ProgramRom書き込み
+			for (int i = 0;i < programRomSize;i++, count++) //ProgramRom書き込み
             {
                 cpu.WriteMemory((ushort)(0x8000 + i), romBinary[count]);
             }
+			if (programRomSize == 0x4000)
+			{
+				count = 0x10;
+				for (int i = 0;i < programRomSize;i++, count++)
+				{
+					cpu.WriteMemory((ushort)(0xC000 + i), romBinary[count]);
+				}
+    
+			}
 
             for (int i = 0; i < CharacterRimSize;i++, count++) //CharactarRom書き込み
             {
