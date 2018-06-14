@@ -75,15 +75,13 @@ namespace NES_Emulator.NES
 
 
         bool nmiInterrupt; //NMI割り込みを有効化するか
-        bool verticalMirror; //true : 垂直ミラー, false : 水平ミラー
 
         byte oamAddr;  //0x2003 OAMADDR W スプライトメモリデータ 書き込むスプライト領域のアドレス
 		byte[] tempOamData; //0, y 1, tile 2, attr 3, x
         ushort ppuAddr; //0x2006 PPUADDR W PPUメモリアドレス 書き込むメモリ領域のアドレス
         byte ppuData; //0x2007 PPUDATA RW PPUメモリデータ PPUメモリ領域のデータ
         int oamDataWriteCount; //0x2004のwrite回数を記録
-        int ppuScrollWriteCount; //0x2005のwrite回数を記録
-        int ppuAddrWriteCount; //0x2006のWrite回数を記録
+		int ppuWriteCount; //0x2005, 0x2006のwrite回数を記録
         byte ppuAddressInc; //0x2006のインクリメントする大きさ
         
         double _totalPpuCycle; //PPUの合計サイクル数
@@ -104,8 +102,8 @@ namespace NES_Emulator.NES
             nmiInterrupt = false;
 
             oamDataWriteCount = 0;
+			ppuWriteCount = 0;
 			tempOamData = new byte[4];
-            ppuAddrWriteCount = 0;
             ppuAddressInc = 0x01;
 
             TotalPpuCycle = 0;
@@ -274,32 +272,32 @@ namespace NES_Emulator.NES
                     break;
                 //1回目の書き込みでx, 2回目の書き込みでyのスクロールオフセットを指定
                 case 0x2005:
-                    switch (ppuScrollWriteCount)
+                    switch (ppuWriteCount)
                     {
                         case 0:
 							//scrollOffsetX = value;
 							renderer.ScrollOffsetX = value;
-                            ppuScrollWriteCount++;
+                            ppuWriteCount++;
                             break;
                         case 1:
 							//scrollOffsetY = value;
 							renderer.ScrollOffsetY = value;
-                            ppuScrollWriteCount = 0;
+                            ppuWriteCount = 0;
 							Debug.WriteLine(renderer.ScrollOffsetX + ", " + renderer.ScrollOffsetY);
                             break;
                     }
                     break;
                 //1回目の書き込みで上位バイト, 2回目の書き込みで下位バイトを設定
                 case 0x2006:
-                    switch (ppuAddrWriteCount)
+                    switch (ppuWriteCount)
                     {
                         case 0:
                             ppuAddr = (ushort)(value * 0x100);
-                            ppuAddrWriteCount++;
+                            ppuWriteCount++;
                             break;
                         case 1:
                             ppuAddr += value;
-                            ppuAddrWriteCount = 0;
+                            ppuWriteCount = 0;
                             break;
                     }
                     break;
@@ -347,7 +345,7 @@ namespace NES_Emulator.NES
 					int spriteHit = (renderer.SpriteHit) ? 1 : 0;
                     vBlank = false;
                     oamDataWriteCount = 0;
-                    ppuAddrWriteCount = 0;
+                    ppuWriteCount = 0;
 					return (byte)(vblankFlag * 0x80 + spriteHit * 0x40);
                 case 0x2007:
                     break;
