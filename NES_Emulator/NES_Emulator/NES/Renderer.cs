@@ -116,7 +116,17 @@ namespace NES_Emulator.NES
             int column = x % 8;
             int line = y % 8;
 
-			int paletteNumber = 4 * attrTable[tableAddress];
+			int paletteNumber = 0;
+			try
+			{
+				paletteNumber = 4 * attrTable[tableAddress];
+			}
+			catch(Exception)
+			{
+				Debug.WriteLine(x + ", " + y);
+				Debug.WriteLine(ScrollOffsetX + ", " + ScrollOffsetY);
+			}
+			//int paletteNumber = 4 * attrTable[tableAddress];
 			int colorNumber = Sprite[nameTable[tableAddress] + BgPatternTable, line, column];
 			if (colorNumber == 0)
 				paletteNumber = 0;
@@ -137,6 +147,10 @@ namespace NES_Emulator.NES
 				return RenderBackGround(x, y);
 
 			if (spriteRenderPosition[position].TileID == 0 && spriteRenderPosition[position].PatternTable == 0)
+			{
+				SpriteHit = true;
+				RenderBackGround(x, y);
+			}
 				SpriteHit = true;
                
 			int spritePaletteCode = 4 * spriteRenderPosition[position].Palette; //スプライトパレット
@@ -210,39 +224,52 @@ namespace NES_Emulator.NES
 						break;
 				}
 			}
-			//Debug.WriteLine(Convert.ToString(address, 16) + ", " + tableAddress);
             
 			tableAddress = 4 * (tableAddress % 16) + 256 * (tableAddress / 16);
-			//Debug.WriteLine(Convert.ToString(address, 16) + ", " + tableAddress);
-			int paletteNumber = GetPalette(value, 0);
-			try
+
+			AttrTableTypeToNameTableType(tableAddress, value, ((tableAddress >= 1792 && tableAddress < 1856) || (tableAddress >= 3712 && tableAddress < 3776)));
+
+			switch (mirrorType)
 			{
-				attrTable[tableAddress] = (byte)paletteNumber;
+				case MirrorType.HorizontalMirror:
+					tableAddress += 32;
+					break;
+				case MirrorType.VerticalMirror:
+					tableAddress += 1920;
+					break;
 			}
-			catch(Exception e)
-			{
-				//Debug.WriteLine( + ", "  +tableAddress);
-			}
-			attrTable[tableAddress + 1] = (byte)paletteNumber;
-			attrTable[tableAddress + 64] = (byte)paletteNumber;
-			attrTable[tableAddress + 65] = (byte)paletteNumber;
-			paletteNumber = GetPalette(value, 1);
-			attrTable[tableAddress + 2] = (byte)paletteNumber;
-			attrTable[tableAddress + 3] = (byte)paletteNumber;
-			attrTable[tableAddress + 66] = (byte)paletteNumber;
-			attrTable[tableAddress + 67] = (byte)paletteNumber;
-			paletteNumber = GetPalette(value, 2);
-			attrTable[tableAddress + 128] = (byte)paletteNumber;
-			attrTable[tableAddress + 129] = (byte)paletteNumber;
-			attrTable[tableAddress + 192] = (byte)paletteNumber;
-			attrTable[tableAddress + 193] = (byte)paletteNumber;
-			paletteNumber = GetPalette(value, 3);
-			attrTable[tableAddress + 130] = (byte)paletteNumber;
-			attrTable[tableAddress + 131] = (byte)paletteNumber;
-			attrTable[tableAddress + 194] = (byte)paletteNumber;
-			attrTable[tableAddress + 195] = (byte)paletteNumber;
+			AttrTableTypeToNameTableType(tableAddress, value, ((tableAddress >= 1792 && tableAddress < 1856) || (tableAddress >= 3712 && tableAddress < 3776)));
 		}
-        
+
+		void AttrTableTypeToNameTableType(int tableAddress, byte value, bool bottom)
+		{
+			int paletteNumber = GetPalette(value, 0);
+            attrTable[tableAddress] = (byte)paletteNumber;
+            attrTable[tableAddress + 1] = (byte)paletteNumber;
+            attrTable[tableAddress + 64] = (byte)paletteNumber;
+            attrTable[tableAddress + 65] = (byte)paletteNumber;
+            paletteNumber = GetPalette(value, 1);
+            attrTable[tableAddress + 2] = (byte)paletteNumber;
+            attrTable[tableAddress + 3] = (byte)paletteNumber;
+            attrTable[tableAddress + 66] = (byte)paletteNumber;
+            attrTable[tableAddress + 67] = (byte)paletteNumber;
+			if (!bottom)
+			{
+				//Debug.WriteLine(tableAddress);
+				paletteNumber = GetPalette(value, 2);
+                attrTable[tableAddress + 128] = (byte)paletteNumber;
+                attrTable[tableAddress + 129] = (byte)paletteNumber;
+                attrTable[tableAddress + 192] = (byte)paletteNumber;
+                attrTable[tableAddress + 193] = (byte)paletteNumber;
+                paletteNumber = GetPalette(value, 3);
+                attrTable[tableAddress + 130] = (byte)paletteNumber;
+                attrTable[tableAddress + 131] = (byte)paletteNumber;
+                attrTable[tableAddress + 194] = (byte)paletteNumber;
+                attrTable[tableAddress + 195] = (byte)paletteNumber;
+			}
+            
+		}
+
 		public void TestShowAttr()
 		{
 			Debug.WriteLine("---------------------------------------------------------------------------------------------------------");
