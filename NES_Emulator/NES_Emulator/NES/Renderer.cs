@@ -42,6 +42,7 @@ namespace NES_Emulator.NES
 		public bool IsSpriteVisible { get; set; } //スプライトを表示するかどうか
 		public int SpriteSize { get; set; } //スプライトサイズ
 		public bool SpriteHit { get; set; } //0爆弾
+		public int DisplayTable { get; set; } //画面に表示するテーブル
         public ImageSource GameScreen { get { return ImageSource.FromStream(() => new MemoryStream(gameScreen)); } }
 
 		public Renderer(MirrorType mirrorType)
@@ -110,26 +111,49 @@ namespace NES_Emulator.NES
         /// <param name="y">読み込みy座標</param>
         byte[] RenderBackGround(int x, int y)
 		{
+			switch(DisplayTable)
+			{
+				case 1:
+					x += 256;
+					break;
+				case 2:
+					y += 240;
+					break;
+				case 3:
+					x += 256;
+					y += 240;
+					break;
+			}
 			x += ScrollOffsetX;
 			y += ScrollOffsetY;
+
+            if (x >= 512)
+                x -= 512;
+            if (y >= 480)
+                y -= 480;
+
 			int tableAddress = x / 8 + (y / 8) * 64;
             int column = x % 8;
             int line = y % 8;
 
 			int paletteNumber = 0;
+			int colorNumber = 0;
 			try
 			{
 				paletteNumber = 4 * attrTable[tableAddress];
+				colorNumber = Sprite[nameTable[tableAddress] + BgPatternTable, line, column];
+                if (colorNumber == 0)
+                    paletteNumber = 0;
 			}
 			catch(Exception)
 			{
-				Debug.WriteLine(x + ", " + y);
-				Debug.WriteLine(ScrollOffsetX + ", " + ScrollOffsetY);
+				//Debug.WriteLine(x + ", " + y);
+				//Debug.WriteLine(ScrollOffsetX + ", " + ScrollOffsetY);
 			}
 			//int paletteNumber = 4 * attrTable[tableAddress];
-			int colorNumber = Sprite[nameTable[tableAddress] + BgPatternTable, line, column];
+			/*int colorNumber = Sprite[nameTable[tableAddress] + BgPatternTable, line, column];
 			if (colorNumber == 0)
-				paletteNumber = 0;
+				paletteNumber = 0;*/
 			return paletteColors[Palette[paletteNumber + colorNumber]];
 
 		}
@@ -255,7 +279,6 @@ namespace NES_Emulator.NES
             attrTable[tableAddress + 67] = (byte)paletteNumber;
 			if (!bottom)
 			{
-				//Debug.WriteLine(tableAddress);
 				paletteNumber = GetPalette(value, 2);
                 attrTable[tableAddress + 128] = (byte)paletteNumber;
                 attrTable[tableAddress + 129] = (byte)paletteNumber;
@@ -269,18 +292,7 @@ namespace NES_Emulator.NES
 			}
             
 		}
-
-		public void TestShowAttr()
-		{
-			Debug.WriteLine("---------------------------------------------------------------------------------------------------------");
-			for (int i = 0; i < attrTable.Length;i++)
-			{
-				if ((i % 64) == 0)
-					Debug.WriteLine("");
-				Debug.Write(nameTable[i] + " ");
-			}
-		}
-
+              
         
         /// <summary>
         /// oamメモリへの書き込み
