@@ -83,7 +83,7 @@ namespace NES_Emulator.NES
 			oamTable = new Oam[0x40];
 			spriteRenderPosition = new Dictionary<int, Oam>();
 			spritePosition = new List<int>[0x40];
-			this.mirrorType = mirrorType;
+            this.mirrorType = mirrorType;
         }
 
 
@@ -136,24 +136,10 @@ namespace NES_Emulator.NES
             int column = x % 8;
             int line = y % 8;
 
-			int paletteNumber = 0;
-			int colorNumber = 0;
-			try
-			{
-				paletteNumber = 4 * attrTable[tableAddress];
-				colorNumber = Sprite[nameTable[tableAddress] + BgPatternTable, line, column];
-                if (colorNumber == 0)
-                    paletteNumber = 0;
-			}
-			catch(Exception)
-			{
-				//Debug.WriteLine(x + ", " + y);
-				//Debug.WriteLine(ScrollOffsetX + ", " + ScrollOffsetY);
-			}
-			//int paletteNumber = 4 * attrTable[tableAddress];
-			/*int colorNumber = Sprite[nameTable[tableAddress] + BgPatternTable, line, column];
+			int paletteNumber = 4 * attrTable[tableAddress];
+			int colorNumber = Sprite[nameTable[tableAddress] + BgPatternTable, line, column];
 			if (colorNumber == 0)
-				paletteNumber = 0;*/
+				paletteNumber = 0;
 			return paletteColors[Palette[paletteNumber + colorNumber]];
 
 		}
@@ -179,12 +165,22 @@ namespace NES_Emulator.NES
                
 			int spritePaletteCode = 4 * spriteRenderPosition[position].Palette; //スプライトパレット
 			int spriteColorNumber = 0;
-			try
-			{
-				spriteColorNumber = Sprite[spriteRenderPosition[position].TileID + spriteRenderPosition[position].PatternTable,
-										   y - spriteRenderPosition[position].Y, x - spriteRenderPosition[position].X]; //配色番号
-			}
-			catch (Exception) {}
+            try
+            {
+                if (spriteRenderPosition[position].HorizontalReverse)
+                    spriteColorNumber = Sprite[spriteRenderPosition[position].TileID + spriteRenderPosition[position].PatternTable,
+                                               y - spriteRenderPosition[position].Y, 7 - (x - spriteRenderPosition[position].X)]; //配色番号
+                else if (spriteRenderPosition[position].VerticalReverse)
+                    spriteColorNumber = Sprite[spriteRenderPosition[position].TileID + spriteRenderPosition[position].PatternTable,
+                                               SpriteSize - 1 - (y - spriteRenderPosition[position].Y), x - spriteRenderPosition[position].X]; //配色番号
+                else if (spriteRenderPosition[position].HorizontalReverse && spriteRenderPosition[position].VerticalReverse)
+                    spriteColorNumber = Sprite[spriteRenderPosition[position].TileID + spriteRenderPosition[position].PatternTable,
+                                               SpriteSize - 1 - (y - spriteRenderPosition[position].Y), 7 - (x - spriteRenderPosition[position].X)]; //配色番号
+                else
+                    spriteColorNumber = Sprite[spriteRenderPosition[position].TileID + spriteRenderPosition[position].PatternTable,
+                                           y - spriteRenderPosition[position].Y, x - spriteRenderPosition[position].X]; //配色番号
+            }
+            catch (Exception) {}
 			if (spriteColorNumber == 0) //0x3F10, 0x3F14, 0x3F18, 0x3F1Cは背景色
 				return RenderBackGround(x, y);
 			return paletteColors[Palette[0x10 + spritePaletteCode + spriteColorNumber]];
@@ -198,7 +194,7 @@ namespace NES_Emulator.NES
         /// <param name="value">Value.</param>
 		public void WriteNameTable(ushort address, byte value)
 		{
-			int tableAddress = 0;
+            /*int tableAddress = 0;
 			if (address >= 0x2000 && address <= 0x23BF)
 				tableAddress = ((address - 0x2000) / 32) * 64 + address % 32;
 			else if (address >= 0x2400 && address <= 0x27BF)
@@ -222,9 +218,52 @@ namespace NES_Emulator.NES
 				case MirrorType.VerticalMirror:
 					nameTable[tableAddress + 64 * 30] = value;
 					break;
-			}
+			}*/
+            int tableAddress = 0;
+            switch(mirrorType)
+            {
+                case MirrorType.HorizontalMirror:
+                    if (address >= 0x2000 && address <= 0x23BF)
+                    {
+                        tableAddress = ((address - 0x2000) / 32) * 64 + address % 32;
+                        nameTable[tableAddress] = value;
+                        nameTable[tableAddress + 32] = value;
+                    }
+                    else if (address >= 0x2800 && address <= 0x2BBF)
+                    {
+                        tableAddress = ((address - 0x2800) / 32) * 64 + address % 32 + 64 * 30;
+                        nameTable[tableAddress] = value;
+                        nameTable[tableAddress + 32] = value;
+                    }
+                    break;
+                case MirrorType.VerticalMirror:
+                    if (address >= 0x2000 && address <= 0x23BF)
+                    {
+                        tableAddress = ((address - 0x2000) / 32) * 64 + address % 32;
+                        nameTable[tableAddress] = value;
+                        nameTable[tableAddress + 64 * 30] = value;
+                    }
+                    else if (address >= 0x2400 && address <= 0x27BF)
+                    {
+                        tableAddress = ((address - 0x2400) / 32) * 64 + address % 32 + 32;
+                        nameTable[tableAddress] = value;
+                        nameTable[tableAddress + 64 * 30] = value;
+                    }
+                    break;
+            }
 		}
 
+        public void TestShowNameTable()
+        {
+            Debug.WriteLine("--------------------------------------------------------------");
+            for (int i = 0; i < nameTable.Length;i++)
+            {
+                Debug.Write(nameTable[i]);
+                if (0 == ((i + 1) % 64))
+                    Debug.WriteLine("");
+            }
+            Debug.WriteLine("--------------------------------------------------------------");
+        }
 
         /// <summary>
         /// 属性テーブルへの書き込み
@@ -233,7 +272,7 @@ namespace NES_Emulator.NES
         /// <param name="value">Value.</param>
 		public void WriteAttrTable(ushort address, byte value)
 		{
-			int tableAddress = 0;
+			/*int tableAddress = 0;
 			if (address >= 0x23C0 && address <= 0x23FF)
 				tableAddress = ((address - 0x23C0) / 8) * 16 + address % 8;
 			else if (address >= 0x27C0 && address <= 0x27FF)
@@ -251,7 +290,7 @@ namespace NES_Emulator.NES
             
 			tableAddress = 4 * (tableAddress % 16) + 256 * (tableAddress / 16);
 
-			AttrTableTypeToNameTableType(tableAddress, value, ((tableAddress >= 1792 && tableAddress < 1856) || (tableAddress >= 3712 && tableAddress < 3776)));
+			AttrTableTypeToNameTableType(tableAddress, value);
 
 			switch (mirrorType)
 			{
@@ -262,11 +301,48 @@ namespace NES_Emulator.NES
 					tableAddress += 1920;
 					break;
 			}
-			AttrTableTypeToNameTableType(tableAddress, value, ((tableAddress >= 1792 && tableAddress < 1856) || (tableAddress >= 3712 && tableAddress < 3776)));
+			AttrTableTypeToNameTableType(tableAddress, value);*/
+            int tableAddress = 0;
+            switch(mirrorType)
+            {
+                case MirrorType.HorizontalMirror:
+                    if (address >= 0x23C0 && address <= 0x23FF)
+                    {
+                        tableAddress = ((address - 0x23C0) / 8) * 16 + address % 8;
+                        tableAddress = 4 * (tableAddress % 16) + 256 * (tableAddress / 16);
+                        AttrTableTypeToNameTableType(tableAddress, value);
+                        AttrTableTypeToNameTableType(tableAddress + 32, value);
+                    }
+                    else if(address >= 0x2BC0 && address <= 0x2BFF)
+                    {
+                        tableAddress = ((address - 0x2BC0) / 8) * 16 + address % 8 + 8 * 16;
+                        tableAddress = 4 * (tableAddress % 16) + 256 * (tableAddress / 16) - 128;
+                        AttrTableTypeToNameTableType(tableAddress, value);
+                        AttrTableTypeToNameTableType(tableAddress + 32, value);
+                    }
+                    break;
+                case MirrorType.VerticalMirror:
+                    if (address >= 0x23C0 && address <= 0x23FF)
+                    {
+                        tableAddress = ((address - 0x23C0) / 8) * 16 + address % 8;
+                        tableAddress = 4 * (tableAddress % 16) + 256 * (tableAddress / 16);
+                        AttrTableTypeToNameTableType(tableAddress, value);
+                        AttrTableTypeToNameTableType(tableAddress + 1920 - 128, value);
+                    }
+                    else if (address >= 0x27C0 && address <= 0x27FF)
+                    {
+                        tableAddress = ((address - 0x27C0) / 8) * 16 + address % 8 + 8;
+                        tableAddress = 4 * (tableAddress % 16) + 256 * (tableAddress / 16);
+                        AttrTableTypeToNameTableType(tableAddress, value);
+                        AttrTableTypeToNameTableType(tableAddress + 1920 - 128, value);
+                    }
+                    break;
+            }
 		}
 
-		void AttrTableTypeToNameTableType(int tableAddress, byte value, bool bottom)
+		void AttrTableTypeToNameTableType(int tableAddress, byte value)
 		{
+            bool bottom = tableAddress + 128 >= 3840 && tableAddress + 128 < 3904; 
 			int paletteNumber = GetPalette(value, 0);
             attrTable[tableAddress] = (byte)paletteNumber;
             attrTable[tableAddress + 1] = (byte)paletteNumber;
