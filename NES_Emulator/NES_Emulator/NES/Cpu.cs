@@ -490,7 +490,7 @@ namespace NES_Emulator.NES
         /// <param name="address">実効アドレス</param>
         void SBC(ushort address)
         {
-            cFlag = registerA > ReadMemory(address) + (Convert.ToInt32(cFlag) ^ 1);
+            cFlag = registerA >= ReadMemory(address) + (Convert.ToInt32(cFlag) ^ 1);
             byte sub = (byte)(registerA - ReadMemory(address) - (Convert.ToInt32(cFlag) ^ 1));
             if (registerA < ReadMemory(address) + (Convert.ToInt32(cFlag) ^ 1))
                 sub++;
@@ -592,8 +592,6 @@ namespace NES_Emulator.NES
         /// </summary>
 		public int Execute()
         {
-            //if (programCounter == 0x819E)
-                //Debug.WriteLine(cpuAddress[0] + ", " + cpuAddress[2] + ", " + cpuAddress[9]);
             byte opcode = cpuAddress[programCounter];
             switch (opcode)
             {

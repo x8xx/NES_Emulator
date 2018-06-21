@@ -74,12 +74,15 @@ namespace NES_Emulator.NES
             return true;
         }
 
+		int c = 0;
         public void RunEmulator()
 		{
 			DrawingFrame = true;
  			while(DrawingFrame)
 			{
+				//cpu.DebugWriteValue(c);
 				ppu.PpuCycle += 3 * cpu.Execute();
+				c++;
 			}
 		}
               

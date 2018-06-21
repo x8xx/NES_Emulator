@@ -194,31 +194,6 @@ namespace NES_Emulator.NES
         /// <param name="value">Value.</param>
 		public void WriteNameTable(ushort address, byte value)
 		{
-            /*int tableAddress = 0;
-			if (address >= 0x2000 && address <= 0x23BF)
-				tableAddress = ((address - 0x2000) / 32) * 64 + address % 32;
-			else if (address >= 0x2400 && address <= 0x27BF)
-			{
-				switch (mirrorType)
-                {
-                    case MirrorType.HorizontalMirror:
-						tableAddress =  ((address - 0x2400) / 32) * 64 + address % 32 + 64 * 30;
-                        break;
-                    case MirrorType.VerticalMirror:
-						tableAddress = ((address - 0x2400) / 32) * 64 + address % 32 + 32;
-                        break;
-                }
-			}
-			nameTable[tableAddress] = value;
-			switch (mirrorType)
-			{
-				case MirrorType.HorizontalMirror:
-					nameTable[tableAddress + 32] = value;
-					break;
-				case MirrorType.VerticalMirror:
-					nameTable[tableAddress + 64 * 30] = value;
-					break;
-			}*/
             int tableAddress = 0;
             switch(mirrorType)
             {
@@ -272,36 +247,6 @@ namespace NES_Emulator.NES
         /// <param name="value">Value.</param>
 		public void WriteAttrTable(ushort address, byte value)
 		{
-			/*int tableAddress = 0;
-			if (address >= 0x23C0 && address <= 0x23FF)
-				tableAddress = ((address - 0x23C0) / 8) * 16 + address % 8;
-			else if (address >= 0x27C0 && address <= 0x27FF)
-			{
-				switch (mirrorType)
-				{
-					case MirrorType.HorizontalMirror:
-						tableAddress = ((address - 0x27C0) / 8) * 16 + address % 8 + 8 * 16;
-						break;
-					case MirrorType.VerticalMirror:
-						tableAddress = ((address - 0x27C0) / 8) * 16 + address % 8 + 8;
-						break;
-				}
-			}
-            
-			tableAddress = 4 * (tableAddress % 16) + 256 * (tableAddress / 16);
-
-			AttrTableTypeToNameTableType(tableAddress, value);
-
-			switch (mirrorType)
-			{
-				case MirrorType.HorizontalMirror:
-					tableAddress += 32;
-					break;
-				case MirrorType.VerticalMirror:
-					tableAddress += 1920;
-					break;
-			}
-			AttrTableTypeToNameTableType(tableAddress, value);*/
             int tableAddress = 0;
             switch(mirrorType)
             {

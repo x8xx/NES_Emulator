@@ -322,7 +322,7 @@ namespace NES_Emulator.NES
                     ppuWriteCount = 0;
 					return (byte)(vblankFlag * 0x80 + spriteHit * 0x40);
                 case 0x2007:
-                    Debug.WriteLine(Convert.ToString(ppuAddr, 16));
+                    //Debug.WriteLine(Convert.ToString(ppuAddr, 16));
                     return ppuAddress[ppuAddr];
             }
             return 0x00;

@@ -1,0 +1,20 @@
+﻿<Properties StartupConfiguration="{B88BE98F-ADFB-4531-88F1-A506180B2E48}|Default">
+  <MonoDevelop.Ide.ItemProperties.NES__Emulator.iOS PreferredExecutionTarget="MonoDevelop.IPhone.IPhoneSimulatorTarget.CBCEA9B9-07CE-4E40-8660-B55CAE19F83B" automaticSigning="False" />
+  <MonoDevelop.Ide.Workbench ActiveDocument="NES_Emulator/NES_Emulator/NES/Renderer.cs">
+    <Files>
+      <File FileName="NES_Emulator/NES_Emulator/ViewModels/GamePageViewModel.cs" Line="62" Column="21" />
+      <File FileName="NES_Emulator/NES_Emulator/NES/Nes.cs" Line="45" Column="1" />
+      <File FileName="NES_Emulator/NES_Emulator/NES/Ppu.cs" Line="147" Column="23" />
+      <File FileName="NES_Emulator/NES_Emulator/NES/Renderer.cs" Line="351" Column="1" />
+      <File FileName="NES_Emulator/NES_Emulator/NES/Cpu.cs" Line="105" Column="22" />
+      <File FileName="NES_Emulator/NES_Emulator.iOS/Main.cs" Line="17" Column="1" />
+    </Files>
+  </MonoDevelop.Ide.Workbench>
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
+  <MonoDevelop.Ide.DebuggingService.Breakpoints>
+    <BreakpointStore />
+  </MonoDevelop.Ide.DebuggingService.Breakpoints>
+  <MonoDevelop.Ide.DebuggingService.PinnedWatches />
+  <MultiItemStartupConfigurations />
+  <MonoDevelop.Ide.ItemProperties.NES__Emulator.Android PreferredExecutionTarget="Android.Android_Accelerated_Nougat" />
+</Properties>
