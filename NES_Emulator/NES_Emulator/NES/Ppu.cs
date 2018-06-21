@@ -83,8 +83,7 @@ namespace NES_Emulator.NES
         int oamDataWriteCount; //0x2004のwrite回数を記録
 		int ppuWriteCount; //0x2005, 0x2006のwrite回数を記録
         byte ppuAddressInc; //0x2006のインクリメントする大きさ
-        
-        double _totalPpuCycle; //PPUの合計サイクル数
+
         int _renderLine; //次に描画するlineを保持
         bool vBlank; //VBlank中か
         
@@ -106,27 +105,12 @@ namespace NES_Emulator.NES
 			tempOamData = new byte[4];
             ppuAddressInc = 0x01;
 
-            TotalPpuCycle = 0;
+            PpuCycle = 30;
             RenderLine = 0;
             vBlank = false;
          
 			renderer = new Renderer(mirrorType);
 			renderer.Sprite = new byte[nes.CharacterRimSize / 16, 8, 8];
-        }
-
-		/// <summary>
-        /// PPUの合計サイクル数を保持
-        /// サイクル数が341以上になったとき1ライン描画する
-        /// </summary>
-        /// <value>The total ppu cycle.</value>
-        public double TotalPpuCycle
-        {
-            get { return _totalPpuCycle; }
-            set
-            {
-                _totalPpuCycle += value;
-				//Debug.WriteLine(_totalPpuCycle + "cycle");
-            }
         }
 
 
@@ -144,13 +128,21 @@ namespace NES_Emulator.NES
                 if (_renderLine > 261)
                 {
                     nes.DrawingFrame = false;
+                    //Debug.WriteLine(renderer.DisplayTable);
+                    //renderer.TestShowNameTable();
                     _renderLine = 0;
                 }
 
                 if (RenderLine == 241)
 				{
 					if (nmiInterrupt)
-						nes.cpu.Nmi();
+                    {
+                        //Debug.WriteLine(PpuCycle);
+                        PpuCycle += 30;
+                        nes.cpu.Nmi();
+                    }
+
+						//nes.cpu.Nmi();
 					vBlank = true;
 				}
                 else if (RenderLine == 261)
@@ -164,19 +156,20 @@ namespace NES_Emulator.NES
 			get { return _ppuCycle; }
 			set
 			{
-				_ppuCycle = value;
-				if (_ppuCycle >= 341)
-				{
-					if (RenderLine < 240)
-					{
-						RenderLine++;
-						renderer.SpriteHit = false;
-						RenderScreen();
-						PpuCycle -= 341;
-					}
-					else
-						RenderLine++;
-				}
+                _ppuCycle = value;
+                //Debug.WriteLine(_ppuCycle);
+                while(_ppuCycle >= 341)
+                {
+                    _ppuCycle -= 341;
+                    if (RenderLine < 240)
+                    {
+                        renderer.SpriteHit = false;
+                        RenderScreen();
+                        RenderLine++;
+                    }
+                    else
+                        RenderLine++;
+                }
 			}
 		}
 
@@ -187,27 +180,8 @@ namespace NES_Emulator.NES
 		public void RenderScreen()
         {
 			for (int x = 0; x < 256; x++)
-				renderer.RenderScreen(x, RenderLine - 1);
+				renderer.RenderScreen(x, RenderLine);
         }
-
-
-		int ppuCycle = 0;
-        public void Rendering(int cycle)
-		{
-			ppuCycle += 3 * cycle;
-			while (ppuCycle >= 341)
-			{
-				if (RenderLine < 240)
-				{
-					RenderLine++;
-					//Debug.WriteLine(RenderLine);
-					RenderScreen();
-					ppuCycle -= 341;
-				}
-				else
-					RenderLine++;
-			}
-   		}
 
 
         /// <summary>
@@ -238,6 +212,7 @@ namespace NES_Emulator.NES
 					renderer.SpriteSize = Nes.FetchBit(value, 5) * 8 + 8;
 					renderer.BgPatternTable = 256 * Nes.FetchBit(value, 4);
 					renderer.SpritePatternTable = 256 * Nes.FetchBit(value, 3);
+					renderer.DisplayTable = Nes.FetchBit(value, 1) * 2 + Nes.FetchBit(value, 0);
                     break;
                 /* 0x2001 PPUMASK W コントロールレジスタ2 背景イネーブルなどPPUの設定
                 * bit 76543210
@@ -283,7 +258,6 @@ namespace NES_Emulator.NES
 							//scrollOffsetY = value;
 							renderer.ScrollOffsetY = value;
                             ppuWriteCount = 0;
-							Debug.WriteLine(renderer.ScrollOffsetX + ", " + renderer.ScrollOffsetY);
                             break;
                     }
                     break;
@@ -348,7 +322,8 @@ namespace NES_Emulator.NES
                     ppuWriteCount = 0;
 					return (byte)(vblankFlag * 0x80 + spriteHit * 0x40);
                 case 0x2007:
-                    break;
+                    Debug.WriteLine(Convert.ToString(ppuAddr, 16));
+                    return ppuAddress[ppuAddr];
             }
             return 0x00;
         }
@@ -361,6 +336,7 @@ namespace NES_Emulator.NES
         /// <param name="value">値</param>
         public void WriteMemory(ushort address, byte value)
         {
+            ppuAddress[address] = value;
 			if (address >= 0 && address <= 0x1FFF)
 				renderer.WritePatternTable(address, value);
 			else if ((address >= 0x2000 && address <= 0x23BF) || (address >= 0x2400 && address <= 0x27BF)
@@ -380,16 +356,19 @@ namespace NES_Emulator.NES
                     case 0x08:
                     case 0x0C:
 						renderer.Palette[address + 0x10] = value;
+                        ppuAddress[address + 0x3F00 + 0x10] = value;
                         break;
                     case 0x10:
                     case 0x14:
                     case 0x18:
                     case 0x1C:
 						renderer.Palette[address - 0x10] = value;
+                        ppuAddress[address + 0x3F00 - 0x10] = value;
                         break;
                 }
 			}
         }
+
       
 
         /// <summary>
