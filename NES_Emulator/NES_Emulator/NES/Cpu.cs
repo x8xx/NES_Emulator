@@ -43,8 +43,7 @@ namespace NES_Emulator.NES
 			unitName = GetType().Name;
             cpuAddress = new byte[0x10000];
 			INITIAL_PROGRAM_COUNTER = (ushort)(0x10000 - programRomSize);
-			Debug.WriteLine(INITIAL_PROGRAM_COUNTER);
-			programCounter = INITIAL_PROGRAM_COUNTER; //PC初期化
+			programCounter = 0x8000; //PC初期化
             //フラグ初期化
             nFlag = false;
             vFlag = false;
@@ -55,22 +54,12 @@ namespace NES_Emulator.NES
             registerS = 0xff;
             this.nes = nes;
         }
-        
 
-		/// <summary>
-        /// PPUサイクルの加算
-        /// </summary>
-        /// <param name="cycle">Cycle.</param>
-        public void PpuCycleInc(int cycle)
-        {
-			nes.ppu.TotalPpuCycle = 3 * cycle;
-            /*Debug.WriteLine("cycle : " + cycle);
-            Debug.WriteLine("Total : " + totalCpuCycle);*/
-        }
 
         public void DebugWriteValue(int count)
         {
-			if (programCounter != 0x8037 && programCounter != 0x803A)
+            Debug.WriteLine(cpuAddress[0]);
+			if (false)
 			{
 				Debug.WriteLine(count + "=>");
 				Debug.WriteLine("A: {0}, X: {1}, Y: {2}, PC: {3}", Convert.ToString(registerA, 16), Convert.ToString(registerX, 16), Convert.ToString(registerY, 16), Convert.ToString(programCounter, 16));
@@ -96,8 +85,6 @@ namespace NES_Emulator.NES
         {
             if (address >= 0x2000 && address <= 0x401F)
                 nes.WriteIoRegister(address, value);
-            if (address == 0x4014)
-                PpuCycleInc(514);
             cpuAddress[address] = value;
         }
 
@@ -393,7 +380,7 @@ namespace NES_Emulator.NES
         /// </summary>
         /// <param name="address">実効アドレス</param>
         void Comparison(ushort address, ref byte register)
-        {
+		{
             int tmp = register - ReadMemory(address);
             FlagNandZ(tmp);
             cFlag = tmp >= 0;
@@ -499,11 +486,12 @@ namespace NES_Emulator.NES
         /// <param name="address">実効アドレス</param>
         void SBC(ushort address)
         {
+            cFlag = registerA > ReadMemory(address) + (Convert.ToInt32(cFlag) ^ 1);
             byte sub = (byte)(registerA - ReadMemory(address) - (Convert.ToInt32(cFlag) ^ 1));
-            registerA = (byte)sub;
+            registerA = sub;
             FlagNandZ(registerA);
             vFlag = (!(((registerA ^ ReadMemory(address)) & 0x80) != 0) && (((registerA ^ sub) & 0x80)) != 0);
-            cFlag = sub >= 0;
+            //cFlag = sub >= 0;
         }
 
         /// <summary>
@@ -598,8 +586,8 @@ namespace NES_Emulator.NES
         /// </summary>
 		public int Execute()
         {
-			if (programCounter == 0x8085)
-				Debug.WriteLine("nmi");
+            //if (programCounter == 0x80EB)
+            //Debug.WriteLine(cpuAddress[2]);
             byte opcode = cpuAddress[programCounter];
             switch (opcode)
             {
@@ -1137,7 +1125,6 @@ namespace NES_Emulator.NES
                     break;
             }
 			return cpuCycle[opcode];
-            //PpuCycleInc(cpuCycle[opcode]);
         }
 
 		//CPUサイクル数
