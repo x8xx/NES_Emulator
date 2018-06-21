@@ -135,6 +135,10 @@ namespace NES_Emulator.NES
         /// </summary>
         public void Nmi()
         {
+            /*for (int i = 0; i < 10; i++)
+                Debug.Write(Convert.ToString(cpuAddress[i], 16) + ", ");
+            Debug.WriteLine(Convert.ToString(registerA, 16) + ", " + Convert.ToString(registerX, 16) + ", " + Convert.ToString(registerY, 16));
+            Debug.WriteLine("-------------------------------------------------------------------------------------------");*/
             Push((byte)(programCounter >> 8));
             Push((byte)((programCounter << 8) >> 8));
             Push(GetRegisterP());
@@ -488,6 +492,8 @@ namespace NES_Emulator.NES
         {
             cFlag = registerA > ReadMemory(address) + (Convert.ToInt32(cFlag) ^ 1);
             byte sub = (byte)(registerA - ReadMemory(address) - (Convert.ToInt32(cFlag) ^ 1));
+            if (registerA < ReadMemory(address) + (Convert.ToInt32(cFlag) ^ 1))
+                sub++;
             registerA = sub;
             FlagNandZ(registerA);
             vFlag = (!(((registerA ^ ReadMemory(address)) & 0x80) != 0) && (((registerA ^ sub) & 0x80)) != 0);
@@ -586,8 +592,8 @@ namespace NES_Emulator.NES
         /// </summary>
 		public int Execute()
         {
-            //if (programCounter == 0x80EB)
-            //Debug.WriteLine(cpuAddress[2]);
+            //if (programCounter == 0x819E)
+                //Debug.WriteLine(cpuAddress[0] + ", " + cpuAddress[2] + ", " + cpuAddress[9]);
             byte opcode = cpuAddress[programCounter];
             switch (opcode)
             {
