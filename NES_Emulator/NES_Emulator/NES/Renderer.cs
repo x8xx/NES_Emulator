@@ -161,7 +161,6 @@ namespace NES_Emulator.NES
 				SpriteHit = true;
 				RenderBackGround(x, y);
 			}
-				SpriteHit = true;
                
 			int spritePaletteCode = 4 * spriteRenderPosition[position].Palette; //スプライトパレット
 			int spriteColorNumber = 0;
@@ -172,15 +171,15 @@ namespace NES_Emulator.NES
                                                y - spriteRenderPosition[position].Y, 7 - (x - spriteRenderPosition[position].X)]; //配色番号
                 else if (spriteRenderPosition[position].VerticalReverse)
                     spriteColorNumber = Sprite[spriteRenderPosition[position].TileID + spriteRenderPosition[position].PatternTable,
-                                               SpriteSize - 1 - (y - spriteRenderPosition[position].Y), x - spriteRenderPosition[position].X]; //配色番号
+                                               7 - (y - spriteRenderPosition[position].Y), x - spriteRenderPosition[position].X]; //配色番号
                 else if (spriteRenderPosition[position].HorizontalReverse && spriteRenderPosition[position].VerticalReverse)
                     spriteColorNumber = Sprite[spriteRenderPosition[position].TileID + spriteRenderPosition[position].PatternTable,
-                                               SpriteSize - 1 - (y - spriteRenderPosition[position].Y), 7 - (x - spriteRenderPosition[position].X)]; //配色番号
+                                               7 - (y - spriteRenderPosition[position].Y), 7 - (x - spriteRenderPosition[position].X)]; //配色番号
                 else
                     spriteColorNumber = Sprite[spriteRenderPosition[position].TileID + spriteRenderPosition[position].PatternTable,
                                            y - spriteRenderPosition[position].Y, x - spriteRenderPosition[position].X]; //配色番号
             }
-            catch (Exception) {}
+            catch (Exception) { Debug.WriteLine(spriteRenderPosition[position].TileID); }
 			if (spriteColorNumber == 0) //0x3F10, 0x3F14, 0x3F18, 0x3F1Cは背景色
 				return RenderBackGround(x, y);
 			return paletteColors[Palette[0x10 + spritePaletteCode + spriteColorNumber]];
@@ -368,10 +367,22 @@ namespace NES_Emulator.NES
 						spriteRenderPosition[i + j] = oamTable[offset];
 
 					spritePosition[offset].Add(i + j);
-                 
-					if (k >= 8)
-						spriteRenderPosition[i + j].TileID++;
 				}
+
+                if (k == 7)
+                {
+                    oamTable[offset] = new Oam
+                    {
+                        X = x,
+                        Y = y + 8,
+                        TileID = tileID + 1,
+                        PatternTable = patternTableNumber,
+                        HorizontalReverse = horizontalReverse,
+                        VerticalReverse = verticalReverse,
+                        Priority = priority,
+                        Palette = palette
+                    };
+                }
 			}
 		}
 
