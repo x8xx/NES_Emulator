@@ -80,8 +80,9 @@ namespace NES_Emulator.NES
 			DrawingFrame = true;
  			while(DrawingFrame)
 			{
-				//cpu.DebugWriteValue(c);
-				ppu.PpuCycle += 3 * cpu.Execute();
+                //cpu.DebugWriteValue(c);
+                ppu.PpuCycle = 3 * cpu.Execute();
+                //ppu.RenderScreen(3 * cpu.Execute());
 				c++;
 			}
 		}

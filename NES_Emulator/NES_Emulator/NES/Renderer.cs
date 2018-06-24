@@ -156,11 +156,11 @@ namespace NES_Emulator.NES
 			if (!spriteRenderPosition.ContainsKey(position))
 				return RenderBackGround(x, y);
 
-			if (spriteRenderPosition[position].TileID == 0 && spriteRenderPosition[position].PatternTable == 0)
-			{
-				SpriteHit = true;
-				RenderBackGround(x, y);
-			}
+            if (spriteRenderPosition[position].TileID == 0)
+            {
+                SpriteHit = true;
+                RenderBackGround(x, y);
+            }
                
 			int spritePaletteCode = 4 * spriteRenderPosition[position].Palette; //スプライトパレット
 			int spriteColorNumber = 0;
@@ -179,7 +179,7 @@ namespace NES_Emulator.NES
                     spriteColorNumber = Sprite[spriteRenderPosition[position].TileID + spriteRenderPosition[position].PatternTable,
                                            y - spriteRenderPosition[position].Y, x - spriteRenderPosition[position].X]; //配色番号
             }
-            catch (Exception) { Debug.WriteLine(spriteRenderPosition[position].TileID); }
+            catch (Exception) { }
 			if (spriteColorNumber == 0) //0x3F10, 0x3F14, 0x3F18, 0x3F1Cは背景色
 				return RenderBackGround(x, y);
 			return paletteColors[Palette[0x10 + spritePaletteCode + spriteColorNumber]];
