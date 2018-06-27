@@ -126,7 +126,6 @@ namespace NES_Emulator.NES
                 _renderLine = value;
                 if (_renderLine > 261)
                 {
-                    renderer.SpriteHit = false;
                     nes.DrawingFrame = false;
                     //Debug.WriteLine(renderer.DisplayTable);
                     //renderer.TestShowNameTable();
@@ -190,13 +189,38 @@ namespace NES_Emulator.NES
                 while (_ppuCycle >= 341)
                 {
                     RenderLine++;
+                    if (RenderLine < 240)
+                        renderer.CheckSpriteHit(RenderLine);
                     int cycle = _ppuCycle - 341;
                     _ppuCycle = 0;
                     PpuCycle = cycle;
                 }
-                    
 			}
 		}
+
+        public void ShowTest()
+        {
+            /*for (int i = 0x23C0, n = 0; i <= 0x23FF;i++, n++)
+            {
+                if (n == 16)
+                {
+                    Debug.WriteLine("");
+                    n = 0;
+                }
+                Debug.Write(Convert.ToString(ppuAddress[i], 16) + ", ");
+            }*/
+            for (int i = 0x3F00, n = 0; i <= 0x3F1F;i++, n++)
+            {
+                if (n == 16)
+                {
+                    Debug.WriteLine("");
+                    n = 0;
+                }
+                Debug.Write(Convert.ToString(ppuAddress[i], 16) + ", ");
+            }
+
+        }
+
 
         public void RenderScreen(int cycle)
         {
@@ -266,8 +290,8 @@ namespace NES_Emulator.NES
                 * G : 0:カラー, 1:モノクロ
                 */
                 case 0x2001:               
-					renderer.IsSpriteVisible = Nes.FetchBit(value, 4) != 1;
-					renderer.IsBGVisible = Nes.FetchBit(value, 3) != 1;
+					renderer.IsSpriteVisible = Nes.FetchBit(value, 4) == 1;
+					renderer.IsBGVisible = Nes.FetchBit(value, 3) == 1;
                     break;
                 //読み書きするOAMアドレスを指定
                 case 0x2003:
@@ -360,7 +384,7 @@ namespace NES_Emulator.NES
                     ppuWriteCount = 0;
 					return (byte)(vblankFlag * 0x80 + spriteHit * 0x40);
                 case 0x2007:
-                    //Debug.WriteLine(Convert.ToString(ppuAddr, 16));
+                    //Debug.WriteLine(Convert.ToString(ppuAddr, 16)); 
                     return ppuAddress[ppuAddr];
             }
             return 0x00;

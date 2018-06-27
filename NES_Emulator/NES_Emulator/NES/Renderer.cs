@@ -24,6 +24,7 @@ namespace NES_Emulator.NES
 			public bool VerticalReverse { get; set; } //水平反転
 			public bool Priority { get; set; } //優先度
 			public int Palette { get; set; } //パレット
+            public bool SpriteHit { get; set; }
         }
 
 		int screenOffset; //現在描画中のスクリーンの位置
@@ -74,6 +75,8 @@ namespace NES_Emulator.NES
                     writer.Write(0); //重要な色の数
                 }
             }
+            IsSpriteVisible = true;
+            IsBGVisible = true;
 			SpriteSize = 8;
 			Palette = new byte[0x20];
 			patternTable = new byte[0x2000];
@@ -132,6 +135,9 @@ namespace NES_Emulator.NES
             if (y >= 480)
                 y -= 480;
 
+            if (!IsBGVisible)
+                return paletteDefaultColor;
+
 			int tableAddress = x / 8 + (y / 8) * 64;
             int column = x % 8;
             int line = y % 8;
@@ -153,14 +159,11 @@ namespace NES_Emulator.NES
         byte[] RenderSprite(int x, int y)
 		{
 			int position = x + y * 256;         
-			if (!spriteRenderPosition.ContainsKey(position))
+            if (!IsSpriteVisible || !spriteRenderPosition.ContainsKey(position))
 				return RenderBackGround(x, y);
 
-            if (spriteRenderPosition[position].TileID == 0)
-            {
-                SpriteHit = true;
-                RenderBackGround(x, y);
-            }
+            /*if (spriteRenderPosition[position].SpriteHit)
+                return RenderBackGround(x, y);*/
                
 			int spritePaletteCode = 4 * spriteRenderPosition[position].Palette; //スプライトパレット
 			int spriteColorNumber = 0;
@@ -332,7 +335,11 @@ namespace NES_Emulator.NES
 				}
 				spritePosition[offset] = null;
 			}
-            
+
+            bool spriteHit = false;
+            if (offset == 0)
+                spriteHit = true;
+
 			int tileID = tile;
 			int patternTableNumber = SpritePatternTable;
 			if (SpriteSize > 8)
@@ -342,18 +349,19 @@ namespace NES_Emulator.NES
 			}
 			bool verticalReverse = Nes.FetchBit(attr, 7) == 1;
 			bool horizontalReverse = Nes.FetchBit(attr, 6) == 1;
-			bool priority = Nes.FetchBit(attr, 6) == 0;
+			bool priority = Nes.FetchBit(attr, 5) == 0;
 			int palette = Nes.FetchBit(attr, 1) * 2 + Nes.FetchBit(attr, 0);
-			oamTable[offset] = new Oam
-			{
-				X = x,
-				Y = y,
-				TileID = tileID,
-				PatternTable = patternTableNumber,
-				HorizontalReverse = horizontalReverse,
-				VerticalReverse = verticalReverse,
-				Priority = priority,
-				Palette = palette
+            oamTable[offset] = new Oam
+            {
+                X = x,
+                Y = y + 1,
+                TileID = tileID,
+                PatternTable = patternTableNumber,
+                HorizontalReverse = horizontalReverse,
+                VerticalReverse = verticalReverse,
+                Priority = priority,
+                Palette = palette,
+                SpriteHit = spriteHit
 			};
 
 			spritePosition[offset] = new List<int>();
@@ -418,6 +426,20 @@ namespace NES_Emulator.NES
 		{
 			patternTable[offset] = value;
 		}
+
+
+        public void CheckSpriteHit(int renderLine)
+        {
+            for (int i = renderLine * 256; i < (renderLine + 1) * 256; i++)
+            {
+                if (spriteRenderPosition.ContainsKey(i) && spriteRenderPosition[i].SpriteHit)
+                {
+                    SpriteHit = true;
+                    return;
+                }
+            }
+            SpriteHit = false;
+        }
 
 
 		/// <summary>
@@ -493,6 +515,8 @@ namespace NES_Emulator.NES
             new byte[]{ 0x9F, 0xFF, 0xF3 }, new byte[]{ 0xDD, 0xDD, 0xDD },
             new byte[]{ 0x11, 0x11, 0x11 }, new byte[]{ 0x11, 0x11, 0x11 }
         };
+
+        byte[] paletteDefaultColor = new byte[] { 0x00, 0x00, 0x00 };
 
     }
 
