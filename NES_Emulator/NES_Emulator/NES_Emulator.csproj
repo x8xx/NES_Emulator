@@ -13,6 +13,7 @@
     <Folder Include="NES\" />
     <Folder Include="FileManage\" />
     <Folder Include="Behaviors\" />
+    <Folder Include="Controllers\" />
   </ItemGroup>
   <ItemGroup>
     <Compile Remove="NES\PpuRegister.cs" />

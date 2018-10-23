@@ -129,12 +129,16 @@ namespace NES_Emulator.NES
             cFlag = Nes.FetchBit(value, 0) != 0;
         }
 
+        int c;
         /// <summary>
         /// NMI割り込み
         /// 上位バイト下位バイトレジスタPの順にPush
         /// </summary>
         public void Nmi()
         {
+            /*c++;
+            if (c == 23)
+                nes.ppu.ShowTest();
             /*for (int i = 0; i < 10; i++)
                 Debug.Write(Convert.ToString(cpuAddress[i], 16) + ", ");
             Debug.WriteLine(Convert.ToString(registerA, 16) + ", " + Convert.ToString(registerX, 16) + ", " + Convert.ToString(registerY, 16));
@@ -592,6 +596,7 @@ namespace NES_Emulator.NES
         /// </summary>
 		public int Execute()
         {
+            //Debug.WriteLine(Convert.ToString(programCounter, 16));
             byte opcode = cpuAddress[programCounter];
             switch (opcode)
             {

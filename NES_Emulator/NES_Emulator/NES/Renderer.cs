@@ -382,7 +382,7 @@ namespace NES_Emulator.NES
                     oamTable[offset] = new Oam
                     {
                         X = x,
-                        Y = y + 8,
+                        Y = y + 9,
                         TileID = tileID + 1,
                         PatternTable = patternTableNumber,
                         HorizontalReverse = horizontalReverse,
